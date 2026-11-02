@@ -799,6 +799,32 @@ td .acts { display: flex; gap: 6px; }
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
+  /* ===== phone back button =====
+     Back steps back inside the app first (scanner, item, review, find panel...).
+     On a main screen the first back only warns; a second back within 2 seconds leaves the app. */
+  var lastBack = 0;
+  function backInApp() {
+    if (!$('scan').hidden) { closeScanner(); if (S.view === 'count') focusEntry(); return true; }
+    var v = S.view;
+    if (v === 'item') { act('tab', { v: 'stock' }); return true; }
+    if (v === 'review') { act('tab', { v: 'counts' }); return true; }
+    if (v === 'pin') { act('pin-cancel', {}); return true; }
+    if (v === 'count' && S.findOpen) { S.findOpen = false; S.findQ = ''; render(); return true; }
+    if (v === 'count' && S.cur) { act('wrong', {}); return true; }
+    if ((v === 'counts' || v === 'labels') && isMgr()) { act('tab', { v: 'stock' }); return true; }
+    return false;
+  }
+  function guardBack() { try { history.pushState({ stk: 'guard' }, ''); } catch (e) { } }
+  try { history.replaceState({ stk: 'base' }, ''); } catch (e) { }
+  guardBack();
+  window.addEventListener('popstate', function (ev) {
+    if (ev.state && ev.state.stk === 'guard') return;          // forward navigation, nothing to do
+    if (backInApp()) { lastBack = 0; guardBack(); return; }
+    var now = Date.now();
+    if (now - lastBack < 2000) { history.back(); return; }      // second back: leave the app
+    lastBack = now; guardBack(); toast('Press back again to exit');
+  });
+
   /* ===== start ===== */
   function loadUsers() { return api('users').then(function (j) { S.users = j.users; if (S.view === 'login' || S.view === 'pin') render(); }).catch(function (e) { S.pinErr = 'Cannot reach the stock service: ' + e.message; if (S.view === 'login') render(); }); }
   function start() {
