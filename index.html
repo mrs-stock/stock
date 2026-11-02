@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1B33">
+<title>Stock Vs IP</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Great+Vibes&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #0B1B33; --deep: #071226; --panel: #13294B; --line: #2E4A78; --line2: #1E3760;
+  --gold: #E2B23C; --gold-ink: #0B1B33; --red: #E0484E; --red-soft: #FF8A8E; --red-deep: #6E1C22;
+  --text: #FFFFFF; --soft: #C9D4E6; --muted: #A9B8D0; --dim: #7F93B3;
+  --ok-bg: #1E5B3E; --ok: #7FE3A9; --warn-bg: #4A3510; --warn: #F3CB66; --info-bg: #1C3466; --info: #A9C4F5;
+  --display: 'Archivo Black', 'Arial Black', Impact, sans-serif;
+  --script: 'Great Vibes', 'Brush Script MT', cursive;
+  --body: 'Poppins', 'Segoe UI', Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.wrap { max-width: 560px; margin: 0 auto; padding-top: max(14px, env(safe-area-inset-top, 0px)); padding-bottom: max(28px, env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.wrap.wide { max-width: 1180px; }
+.logo { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.logo b { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: .5px; }
+.logo i { font-family: var(--script); font-style: normal; font-size: 27px; color: var(--gold); }
+.logo.big b { font-size: 40px; } .logo.big i { font-size: 48px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.who { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.btn { min-height: 48px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.btn.gold { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 700; }
+.btn.red { background: var(--red); border-color: var(--red); font-weight: 700; }
+.btn.ghost { background: transparent; }
+.btn.sm { min-height: 40px; padding: 0 12px; border-radius: 10px; font-size: 13px; }
+.btn.block { width: 100%; }
+.btn.tall { min-height: 58px; font-size: 17px; }
+.btn.scanbtn { min-height: 64px; font-size: 18px; border: 2px solid var(--gold); background: transparent; }
+.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 4px; background: var(--deep); border-radius: 14px; }
+.tabs button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--soft); font-weight: 600; }
+.tabs button[aria-current="page"] { background: var(--gold); color: var(--gold-ink); }
+.locs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.locs button { min-height: 50px; border-radius: 10px; border: 1px solid var(--line); background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; padding: 0 2px; }
+.locs button b { font-size: 14px; } .locs button small { font-size: 10px; color: var(--muted); }
+.locs button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--gold-ink); }
+.locs button[aria-pressed="true"] small { color: var(--gold-ink); }
+.searchrow { display: flex; gap: 8px; }
+.search { position: relative; flex: 1; min-width: 0; }
+.search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.field { width: 100%; min-height: 52px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); outline: none; }
+.search .field { padding-left: 44px; }
+.field::placeholder { color: var(--dim); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row { width: 100%; text-align: left; padding: 12px 14px; border-radius: 12px; border: 0; background: var(--panel); display: flex; align-items: center; gap: 12px; }
+.row .t { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.row .d { font-weight: 600; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+.row .s { font-size: 12px; color: var(--muted); }
+.code { font-family: var(--display); letter-spacing: 2px; color: var(--gold); }
+.n { font-family: var(--display); font-size: 22px; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.n.neg { color: var(--red-soft); } .n.zero { color: var(--dim); }
+.band { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.band.gold { background: var(--gold); color: var(--gold-ink); }
+.card { padding: 16px; border-radius: 16px; background: var(--panel); display: flex; flex-direction: column; gap: 12px; }
+.chipcode { font-family: var(--display); font-size: 15px; letter-spacing: 3px; padding: 5px 10px; border-radius: 8px; background: #FFFFFF; color: var(--gold-ink); }
+.h2 { font-size: 20px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.hero { padding: 18px; border-radius: 16px; border: 2px solid var(--gold); background: var(--panel); display: flex; flex-direction: column; gap: 4px; }
+.hero.neg { border-color: var(--red); background: var(--red-deep); }
+.hero .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--soft); }
+.hero .big { font-family: var(--display); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; }
+.g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tile { padding: 12px; border-radius: 12px; background: var(--panel); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tile.o { background: transparent; border: 1px solid var(--line); }
+.tile span { font-size: 12px; color: var(--muted); }
+.tile b { font-size: 21px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tag { display: inline-block; padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.tag.open { background: var(--red); } .tag.closed { background: var(--line); color: var(--soft); }
+.tag.match { background: var(--ok-bg); color: var(--ok); } .tag.diff { background: var(--red-deep); color: #FFD3D5; }
+.tag.recount { background: var(--warn-bg); color: var(--warn); } .tag.recounted { background: var(--info-bg); color: var(--info); }
+.tag.accepted { background: var(--line2); color: var(--soft); } .tag.none { background: var(--line2); color: var(--muted); }
+.note { padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45; }
+.note.warn { background: var(--warn-bg); color: #FBE3A8; } .note.err { background: var(--red-deep); color: #FFD3D5; } .note.plain { background: var(--panel); color: var(--soft); }
+.muted { color: var(--muted); font-size: 13px; }
+label.l, .l { font-size: 14px; font-weight: 600; }
+.pin { font-size: 26px; letter-spacing: 12px; text-align: center; }
+.users { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.users button { min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; padding: 4px; }
+.users button small { font-size: 11px; color: var(--muted); font-weight: 500; }
+.users button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
+.users button[aria-pressed="true"] small { color: var(--gold-ink); }
+.countband { padding: 14px 16px; border-radius: 16px; background: var(--red); display: flex; flex-direction: column; gap: 2px; }
+.countband small { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+.countband strong { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1.1; }
+.countband span { font-size: 14px; }
+.countband.closed { background: var(--line); }
+.entry { font-family: var(--display); font-size: 30px; letter-spacing: 8px; text-align: center; text-transform: uppercase; min-height: 64px; border: 2px solid var(--line); background: var(--deep); }
+.qty { font-family: var(--display); font-size: 36px; text-align: center; min-height: 70px; border: 2px solid var(--red); background: var(--deep); flex: 1; min-width: 0; }
+.qrow { display: flex; gap: 10px; }
+.line { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 10px; border: 1px solid var(--line2); }
+.line .d { flex: 1; min-width: 0; font-size: 13px; color: var(--soft); line-height: 1.3; overflow-wrap: anywhere; }
+.line .n { font-size: 20px; min-width: 40px; }
+.line.pending { border-style: dashed; } .line.failed { border-color: var(--red); }
+.iconbtn { width: 44px; height: 44px; border-radius: 10px; border: 0; background: transparent; color: var(--red-soft); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.recount { border: 2px solid var(--gold); background: transparent; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--soft); min-height: 44px; }
+.check input { width: 22px; height: 22px; accent-color: var(--gold); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters button { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line); background: transparent; font-weight: 600; font-size: 13px; }
+.filters button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
+.tablebox { overflow-x: auto; border-radius: 14px; border: 1px solid var(--line2); }
+table { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; color: var(--soft); background: var(--deep); padding: 10px 12px; white-space: nowrap; }
+td { padding: 10px 12px; border-top: 1px solid var(--line2); vertical-align: middle; }
+td.r, th.r { text-align: right; }
+td .acts { display: flex; gap: 6px; }
+.pos { color: var(--ok); font-weight: 700; } .negv { color: var(--red-soft); font-weight: 700; }
+.labels { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.lab { background: #FFFFFF; color: #0B1B33; border-radius: 10px; padding: 10px; display: flex; gap: 10px; align-items: center; min-width: 0; }
+.lab svg { width: 96px; height: 96px; flex-shrink: 0; }
+.lab .t { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lab small { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #4A5B76; }
+.lab .c { font-family: var(--display); font-size: 22px; letter-spacing: 3px; }
+.lab .dd { font-size: 12px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.lab .no { font-size: 11px; color: #4A5B76; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: max-content; max-width: calc(100% - 32px); background: var(--ok-bg); color: #FFFFFF; padding: 12px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 40; }
+.toast.err { background: var(--red-deep); }
+.center { text-align: center; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.hgroup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* scanner */
+.scan { position: fixed; inset: 0; z-index: 30; background: #000; display: flex; flex-direction: column; }
+.scan video { flex: 1; width: 100%; min-height: 0; object-fit: cover; }
+.scan .frame { position: absolute; left: 50%; top: 42%; width: min(70vw, 300px); aspect-ratio: 1; transform: translate(-50%, -50%); border: 3px solid var(--gold); border-radius: 18px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); pointer-events: none; }
+.scan .bar { padding: 14px max(16px, env(safe-area-inset-left, 0px)) max(18px, env(safe-area-inset-bottom, 0px)); background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
+.scan .bar .msg { text-align: center; font-size: 15px; }
+.scan .bar .btns { display: flex; gap: 10px; }
+.scan .bar .btns .btn { flex: 1; }
+@media print { body { background: #fff; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="wrap"><p class="muted">Loading…</p></div></div>
+<div id="scan" class="scan" hidden>
+  <video id="scanvid" playsinline muted></video>
+  <div class="frame" aria-hidden="true"></div>
+  <div class="bar">
+    <div id="scanmsg" class="msg" role="status">Point the camera at the shelf label QR</div>
+    <div class="btns"><button class="btn" id="scantorch" type="button" hidden>Light on</button><button class="btn gold" id="scanclose" type="button">Close</button></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  /* ===== settings ===== */
+  var API_URL = 'https://script.google.com/macros/s/AKfycbyq-OPO1MqWiz8BcSEb8rzG4v14szO-gP5syX8hS8-6FkidSRSWqD5GGlGjQzSxBha3/exec';
+  var LOCS = ['CAR', 'EVA', 'WEL', 'STE'];
+  var LOCNAME = { CAR: 'Carletonville', EVA: 'Evander', WEL: 'Welkom', STE: 'Steelpoort' };
+  var APP_URL = location.origin + location.pathname;
+
+  /* ===== state ===== */
+  var S = {
+    view: 'loading', token: null, user: null, app: 'Stock Vs IP', snap: '', users: [], loc: 'CAR', q: '', item: null,
+    counts: [], countsLoaded: false, countId: null, count: null, lines: [], mine: [], recount: [], recountRounds: {},
+    pending: [], newLoc: 'CAR', newLabel: '', filter: 'diff', cur: null, curFromScan: false, findOpen: false, findQ: '',
+    pinPick: null, pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true
+  };
+  var LIST = [], BYCODE = {}, BYNO = {}, poll = null, wakeLock = null;
+  var app = document.getElementById('app');
+
+  /* ===== helpers ===== */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmt(n) { if (n == null) return '—'; var neg = n < 0; var s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); return (neg ? '−' : '') + s; }
+  function sfmt(n) { return n > 0 ? '+' + fmt(n) : fmt(n); }
+  function rand(v) { var neg = v < 0; var a = Math.abs(v).toFixed(2).split('.'); return (neg ? '−R' : 'R') + a[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + a[1]; }
+  function dmy(iso) { if (!iso) return '—'; var p = String(iso).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }
+  function when(iso) { if (!iso) return ''; var d = new Date(iso); if (isNaN(d)) return iso; return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+  function isMgr() { return S.user && S.user.role === 'manager'; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  var toastT;
+  function toast(msg, err) { var t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 3200); }
+  var ICON = {
+    search: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A9B8D0" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+    lock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+    trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    plus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    scan: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>'
+  };
+  function logo(big) { return '<span class="logo' + (big ? ' big' : '') + '"><b>STOCK</b><i>Vs</i><b>IP</b></span>'; }
+
+  /* ===== server ===== */
+  function api(a, data) {
+    var body = Object.assign({ a: a, token: S.token }, data || {});
+    return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' })
+      .then(function (r) { if (!r.ok) throw new Error('Server error ' + r.status); return r.json(); })
+      .then(function (j) {
+        if (!j.ok) {
+          if (j.error === 'SIGNED_OUT') { forceLogout(); throw new Error('Your sign-in has expired. Sign in again.'); }
+          throw new Error(j.error || 'Something went wrong');
+        }
+        return j;
+      });
+  }
+  function forceLogout() { stopPoll(); S.token = null; S.user = null; S.countId = null; lsSet('stk-session', null); go('login'); loadUsers(); }
+
+  /* ===== items ===== */
+  function setItems(items) {
+    LIST = items.map(function (o) { o.h = (o.d + ' ' + o.n + ' ' + o.n.replace('/', '') + ' ' + o.c).toLowerCase(); return o; }).sort(function (a, b) { return a.d.localeCompare(b.d); });
+    BYCODE = {}; BYNO = {};
+    LIST.forEach(function (o) { BYCODE[o.c] = o; BYNO[o.n.toUpperCase()] = o; });
+  }
+  function loadItems() {
+    return api('items').then(function (j) {
+      setItems(j.items); if (j.snap) S.snap = j.snap;
+      lsSet('stk-items', { who: S.user.name, role: S.user.role, items: j.items, snap: S.snap });
+    });
+  }
+  function search(q, max) {
+    var toks = q.toLowerCase().split(/\s+/).filter(Boolean), out = [], total = 0, up = q.trim().toUpperCase(), exact = BYCODE[up] || null;
+    for (var i = 0; i < LIST.length; i++) {
+      var it = LIST[i], ok = true;
+      for (var t = 0; t < toks.length; t++) if (it.h.indexOf(toks[t]) < 0) { ok = false; break; }
+      if (!ok || it === exact) continue;
+      total++; if (out.length < max) out.push(it);
+    }
+    if (exact) { out.unshift(exact); total++; }
+    return { items: out, total: total };
+  }
+  function parseCode(v) {
+    v = String(v || '').trim();
+    var m = v.match(/#i-([A-Za-z0-9]{4})/); if (m) v = m[1];
+    m = v.match(/MRS-STOCK:([A-Za-z0-9]{4})/i); if (m) v = m[1];
+    v = v.toUpperCase();
+    if (BYCODE[v]) return v;
+    if (BYNO[v]) return BYNO[v].c;
+    var ws = v.length > 1 && v.indexOf('/') < 0 ? v.charAt(0) + '/' + v.slice(1) : v;
+    return BYNO[ws] ? BYNO[ws].c : null;
+  }
+
+  /* ===== polling ===== */
+  function stopPoll() { if (poll) clearInterval(poll); poll = null; }
+  function startPoll(fn, ms) { stopPoll(); fn(); poll = setInterval(function () { if (!document.hidden) fn(); }, ms); }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && S.view === 'count') refreshCount(); });
+  function refreshCounts() {
+    return api('counts').then(function (j) {
+      S.counts = j.counts; S.countsLoaded = true;
+      if (!isMgr() && (S.view === 'wait' || S.view === 'pick')) routeCounter();
+      else if (S.view === 'counts') render();
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  function refreshCount() {
+    if (!S.countId) return;
+    return api('countState', { countId: S.countId }).then(function (j) {
+      S.count = j.count;
+      if (isMgr()) {
+        S.lines = j.lines;
+        S.mine = j.lines.filter(function (l) { return l.by === S.user.name; });
+        var maxR = {}; j.lines.forEach(function (l) { if (!maxR[l.code] || l.round > maxR[l.code]) maxR[l.code] = l.round; });
+        S.recountRounds = j.count.recount || {};
+        S.recount = Object.keys(S.recountRounds).filter(function (c) { return S.recountRounds[c] > (maxR[c] || 0); });
+      } else { S.mine = j.mine; S.recount = j.recount; S.recountRounds = j.recountRounds || {}; }
+      S.pending = S.pending.filter(function (p) { return p.status !== 'saved'; });
+      if (S.view === 'count') renderCountLive(); else if (S.view === 'review') render();
+    }).catch(function (e) { if (S.view === 'count' || S.view === 'review') toast(e.message, true); });
+  }
+
+  /* ===== routing ===== */
+  function go(view) { S.view = view; render(); window.scrollTo(0, 0); }
+  function afterLogin() {
+    S.view = 'loading'; render();
+    loadItems().then(function () {
+      if (isMgr()) { S.view = S.pendingCode ? 'item' : 'stock'; if (S.pendingCode) { S.item = S.pendingCode; S.pendingCode = null; } render(); }
+      else { S.view = 'wait'; render(); startPoll(refreshCounts, 20000); }
+    }).catch(function (e) { toast(e.message, true); if (S.token) { S.view = 'login'; render(); } });
+  }
+  function routeCounter() {
+    var open = S.counts.filter(function (c) { return c.status === 'open'; });
+    if (S.countId && open.some(function (c) { return c.id === S.countId; })) { enterCount(S.countId); return; }
+    if (open.length === 1) enterCount(open[0].id);
+    else if (open.length > 1) { if (S.view !== 'pick') go('pick'); else render(); }
+    else { if (S.view !== 'wait') go('wait'); else render(); }
+  }
+  function enterCount(id) {
+    S.countId = id; S.count = S.counts.filter(function (c) { return c.id === id; })[0] || null;
+    S.cur = null; S.findOpen = false; S.mine = []; S.recount = []; S.pending = [];
+    saveSession(); go('count'); startPoll(refreshCount, 15000); requestWake(); takePending();
+  }
+  function saveSession() { lsSet('stk-session', S.token ? { token: S.token, user: S.user, countId: S.countId } : null); }
+  function takePending() {
+    var c = S.pendingCode; if (!c || !BYCODE[c]) return; S.pendingCode = null;
+    if (S.view === 'count') selectItem(c, false);
+    else if (isMgr()) { S.item = c; go('item'); }
+  }
+  function readHash() {
+    var m = (location.hash || '').match(/^#i-([A-Za-z0-9]{4})$/);
+    if (m) { S.pendingCode = m[1].toUpperCase(); if (S.user && LIST.length) takePending(); }
+  }
+  window.addEventListener('hashchange', readHash);
+  function requestWake() { try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; }).catch(function () { }); } catch (e) { } }
+  function releaseWake() { try { if (wakeLock) wakeLock.release(); } catch (e) { } wakeLock = null; }
+
+  /* ===== views ===== */
+  function render() {
+    var v = S.view, h;
+    if (v === 'login') h = viewLogin();
+    else if (v === 'stock') h = viewStock();
+    else if (v === 'item') h = viewItem();
+    else if (v === 'counts') h = viewCounts();
+    else if (v === 'review') h = viewReview();
+    else if (v === 'labels') h = viewLabels();
+    else if (v === 'count') h = viewCount();
+    else if (v === 'pick') h = viewPick();
+    else if (v === 'wait') h = viewWait();
+    else if (v === 'pin') h = viewPin();
+    else if (v === 'setup') h = '<div class="wrap"><div class="note err">This app is not connected to its data service yet (API_URL is not set).</div></div>';
+    else h = '<div class="wrap"><p class="muted">Loading…</p></div>';
+    app.innerHTML = h;
+    if (v === 'stock') renderResults();
+    if (v === 'labels') renderLabelResults();
+    if (v === 'count') { renderCountLive(); focusEntry(); }
+  }
+  function topBar(extra) { return '<div class="top">' + logo() + '<div class="who"><span>' + esc(S.user.name) + '</span>' + (extra || '<button class="btn sm ghost" data-act="signout">Sign out</button>') + '</div></div>'; }
+  function adminTop(active) {
+    var tabs = [['stock', 'Stock'], ['counts', 'Stocktake'], ['labels', 'Labels']].map(function (t) { return '<button data-act="tab" data-v="' + t[0] + '"' + (active === t[0] ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('');
+    return topBar() + '<nav class="tabs" aria-label="Sections">' + tabs + '</nav>';
+  }
+  function snapLine() { return S.snap ? 'Sage snapshot ' + dmy(S.snap) + ' ' + String(S.snap).slice(11, 16) : 'Sage snapshot'; }
+
+  function viewLogin() {
+    var users = S.users.length ? S.users.map(function (u) {
+      return '<button type="button" data-act="pick-user" data-name="' + esc(u.name) + '" aria-pressed="' + (S.pinPick === u.name) + '">' + esc(u.name) + '<small>' + (u.role === 'manager' ? 'Manager' : 'Stocktake only') + '</small></button>';
+    }).join('') : '<p class="muted">Loading names…</p>';
+    return '<div class="wrap" style="padding-top:max(40px,env(safe-area-inset-top,0px));gap:24px">' +
+      '<div class="center stack" style="gap:4px">' + logo(true) + '<div class="muted" style="letter-spacing:2px;text-transform:uppercase">Mines Rescue Services · Stores</div></div>' +
+      '<div class="stack"><div class="l">Who is signing in?</div><div class="users">' + users + '</div></div>' +
+      '<form class="stack" data-form="login"><label class="l" for="pin">PIN</label>' +
+      '<input id="pin" class="field pin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="····">' +
+      (S.pinErr ? '<div class="note err" role="alert">' + esc(S.pinErr) + '</div>' : '') +
+      '<button class="btn gold tall" type="submit"' + (S.pinPick && !S.busy ? '' : ' disabled') + '>' + (S.busy ? 'Signing in…' : 'Sign in') + '</button></form>' +
+      '<p class="muted center">Test version · ' + esc(S.app) + '</p></div>';
+  }
+
+  function viewStock() {
+    var locs = LOCS.map(function (l) { return '<button data-act="loc" data-l="' + l + '" aria-pressed="' + (S.loc === l) + '"><b>' + l + '</b><small>' + LOCNAME[l] + '</small></button>'; }).join('');
+    return '<div class="wrap">' + adminTop('stock') +
+      '<div class="locs" role="group" aria-label="Station">' + locs + '</div>' +
+      '<div class="searchrow"><div class="search">' + ICON.search + '<label for="q" class="sr">Search stock</label>' +
+      '<input id="q" class="field" type="search" autocomplete="off" placeholder="Search name, Sage code or code" value="' + esc(S.q) + '"></div>' +
+      '<button class="btn" data-act="scan-lookup" aria-label="Scan a shelf QR" style="min-width:56px;padding:0 12px;color:var(--gold);border-color:var(--gold)">' + ICON.scan + '</button></div>' +
+      '<div class="meta"><span id="rescount"></span><span>On hand · ' + LOCNAME[S.loc] + '</span></div>' +
+      '<div id="res" class="list"></div><p class="muted center">' + snapLine() + '</p></div>';
+  }
+  function renderResults() {
+    var box = $('res'); if (!box) return;
+    var li = LOCS.indexOf(S.loc), r = search(S.q, 60);
+    $('rescount').textContent = r.total === r.items.length ? fmt(r.total) + ' items' : 'Showing ' + r.items.length + ' of ' + fmt(r.total) + ', type more to narrow';
+    box.innerHTML = r.items.length ? r.items.map(function (it) {
+      var q = it.q[li];
+      return '<button class="row" data-act="item" data-c="' + it.c + '"><span class="t"><span class="d">' + esc(it.d) + '</span><span class="s"><span class="code">' + it.c + '</span> · ' + esc(it.n) + (it.x ? ' · inactive' : '') + '</span></span><span class="n' + (q < 0 ? ' neg' : q === 0 ? ' zero' : '') + '">' + fmt(q) + '</span></button>';
+    }).join('') : '<div class="note plain center">No items match “' + esc(S.q) + '”.</div>';
+  }
+  function viewItem() {
+    var it = BYCODE[S.item]; if (!it) { S.view = 'stock'; return viewStock(); }
+    var li = LOCS.indexOf(S.loc), here = it.q[li], total = it.q.reduce(function (a, b) { return a + b; }, 0);
+    var others = LOCS.filter(function (l) { return l !== S.loc; }).map(function (l) { return '<div class="tile"><span>' + LOCNAME[l] + '</span><b>' + fmt(it.q[LOCS.indexOf(l)]) + '</b></div>'; }).join('');
+    var inSet = S.labelSet.indexOf(it.c) >= 0;
+    return '<div class="wrap">' + adminTop('stock') +
+      '<div class="hgroup"><button class="btn ghost sm" data-act="tab" data-v="stock">' + ICON.back + 'Back to list</button><button class="btn sm" data-act="scan-lookup" style="margin-left:auto;color:var(--gold);border-color:var(--gold)">' + ICON.scan + 'Scan next</button></div>' +
+      '<div class="band gold">' + snapLine() + '</div>' +
+      '<div class="hgroup"><span class="chipcode">' + it.c + '</span><span class="muted">Sage ' + esc(it.n) + ' · ' + esc(it.u) + '</span>' + (it.x ? '<span class="tag none">Inactive in Sage</span>' : '') + '</div>' +
+      '<div class="h2">' + esc(it.d) + '</div>' +
+      '<div class="hero' + (here < 0 ? ' neg' : '') + '"><div class="lbl">On hand · ' + LOCNAME[S.loc] + '</div><div class="big">' + fmt(here) + '</div>' +
+      (here < 0 ? '<div style="font-size:13px;color:#FFD3D5">Sage shows negative stock: something was issued before it was received. Count this item.</div>' : '') + '</div>' +
+      '<div class="g3">' + others + '</div>' +
+      '<div class="g3"><div class="tile o"><span>All stations</span><b>' + fmt(total) + '</b></div><div class="tile o"><span>On order</span><b>' + fmt(it.o) + '</b></div><div class="tile o"><span>On sales order</span><b>' + fmt(it.s) + '</b></div></div>' +
+      '<p class="muted">Last received at ' + LOCNAME[S.loc] + ': ' + dmy(it.r[li]) + (it.m ? ' · Unit cost (most recent) ' + rand(it.m) : '') + '</p>' +
+      '<button class="btn block" data-act="label-toggle" data-c="' + it.c + '">' + (inSet ? 'On the label sheet ✓ (tap to remove)' : 'Add to label sheet') + '</button></div>';
+  }
+
+  function viewCounts() {
+    var locs = LOCS.map(function (l) { return '<button data-act="new-loc" data-l="' + l + '" aria-pressed="' + (S.newLoc === l) + '"><b>' + l + '</b><small>' + LOCNAME[l] + '</small></button>'; }).join('');
+    var list = !S.countsLoaded ? '<p class="muted">Loading stocktakes…</p>' : S.counts.length ? S.counts.map(function (c) {
+      return '<div class="card" style="gap:8px"><div class="hgroup"><b style="font-size:16px">' + esc(c.label) + '</b><span class="tag ' + (c.status === 'open' ? 'open">Open' : 'closed">Closed') + '</span></div>' +
+        '<div class="muted">' + (LOCNAME[c.loc] || c.loc) + ' · opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt) + (c.closedAt ? ' · closed ' + when(c.closedAt) : '') + '</div>' +
+        '<div class="hgroup">' + (c.status === 'open' ? '<button class="btn red sm" data-act="count" data-id="' + c.id + '">' + ICON.lock + 'Count now</button>' : '') +
+        '<button class="btn sm" data-act="review" data-id="' + c.id + '">Review differences</button></div></div>';
+    }).join('') : '<div class="note plain">No stocktakes yet. Open one above, then sign in as a stores counter on another phone.</div>';
+    return '<div class="wrap">' + adminTop('counts') +
+      '<div class="card"><b style="font-size:17px">Open a new count</b>' +
+      '<div class="stack" style="gap:6px"><span class="l">Where is the count?</span><div class="locs" role="group" aria-label="Count location">' + locs + '</div></div>' +
+      '<div class="stack" style="gap:6px"><label class="l" for="newlabel">What is being counted?</label><input id="newlabel" class="field" maxlength="40" placeholder="e.g. Shelf A1, Regalia, Full count" value="' + esc(S.newLabel) + '"></div>' +
+      '<button class="btn red block tall" data-act="open-count"' + (S.busy ? ' disabled' : '') + '>Open count at ' + LOCNAME[S.newLoc] + '</button>' +
+      '<p class="muted">Counters only see code and quantity. The review compares against the ' + snapLine().toLowerCase() + '.</p></div>' +
+      '<div class="hgroup" style="justify-content:space-between"><b style="font-size:17px">Stocktakes</b><button class="btn sm ghost" data-act="refresh-counts">Refresh</button></div><div class="stack">' + list + '</div></div>';
+  }
+
+  var STLABEL = { match: 'Match', diff: 'Difference', recount: 'Recount requested', recounted: 'Recounted', accepted: 'Accepted', none: 'Not counted' };
+  function computeReview() {
+    var c = S.count; if (!c) return null;
+    var li = LOCS.indexOf(c.loc), g = {}, rc = c.recount || {}, acc = c.accepted || {}, rows = [];
+    S.lines.forEach(function (l) { (g[l.code] = g[l.code] || []).push(l); });
+    Object.keys(g).forEach(function (code) {
+      var it = BYCODE[code]; if (!it) return;
+      var ls = g[code], maxR = 1;
+      ls.forEach(function (l) { if (l.round > maxR) maxR = l.round; });
+      var sum = function (r) { return ls.filter(function (l) { return l.round === r; }).reduce(function (a, l) { return a + l.qty; }, 0); };
+      var fin = sum(maxR), first = sum(1), sage = it.q[li], diff = fin - sage, val = diff * it.m, req = rc[code] || 0, st;
+      if (acc[code]) st = 'accepted'; else if (req > maxR) st = 'recount'; else if (diff === 0) st = 'match'; else if (maxR > 1) st = 'recounted'; else st = 'diff';
+      var who = {}; ls.forEach(function (l) { who[l.by] = 1; });
+      rows.push({ it: it, code: code, sage: sage, first: first, fin: fin, maxR: maxR, diff: diff, val: val, st: st, who: Object.keys(who).join(', ') });
+    });
+    rows.sort(function (a, b) { return Math.abs(b.val) - Math.abs(a.val) || a.it.d.localeCompare(b.it.d); });
+    var unc = LIST.filter(function (it) { return it.q[li] !== 0 && !g[it.c]; }).map(function (it) { var sage = it.q[li]; return { it: it, code: it.c, sage: sage, first: null, fin: 0, maxR: 0, diff: -sage, val: -sage * it.m, st: 'none', who: '' }; });
+    return { rows: rows, unc: unc };
+  }
+  function viewReview() {
+    var c = S.count;
+    var head = '<div class="wrap wide">' + adminTop('counts') + '<div class="hgroup"><button class="btn ghost sm" data-act="tab" data-v="counts">' + ICON.back + 'Back to stocktakes</button><button class="btn sm ghost" data-act="refresh-review" style="margin-left:auto">Refresh</button></div>';
+    if (!c) return head + '<p class="muted">Loading count…</p></div>';
+    var R = computeReview(), rows = R.rows, diffs = rows.filter(function (r) { return r.diff !== 0; });
+    var net = diffs.reduce(function (a, r) { return a + r.val; }, 0), gross = diffs.reduce(function (a, r) { return a + Math.abs(r.val); }, 0);
+    var open = rows.filter(function (r) { return r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'; }).length, rcOpen = rows.filter(function (r) { return r.st === 'recount'; }).length;
+    var shown = S.filter === 'all' ? rows : S.filter === 'diff' ? diffs : S.filter === 'recount' ? rows.filter(function (r) { return r.st === 'recount'; }) : R.unc;
+    var tiles = [['Items counted', fmt(rows.length), ''], ['Matched Sage', fmt(rows.length - diffs.length), 'color:var(--ok)'], ['Differences', fmt(diffs.length), 'color:var(--red-soft)'],
+      ['Net value of differences', rand(net), net < 0 ? 'color:var(--red-soft)' : 'color:var(--ok)'], ['Gross value (size of the problem)', rand(gross), ''], ['Recounts waiting', fmt(rcOpen), 'color:var(--warn)']]
+      .map(function (t) { return '<div class="tile"><span>' + t[0] + '</span><b style="' + t[2] + '">' + t[1] + '</b></div>'; }).join('');
+    var filters = [['diff', 'Differences (' + diffs.length + ')'], ['all', 'All counted (' + rows.length + ')'], ['recount', 'Recount (' + rcOpen + ')'], ['unc', 'Not counted, Sage has stock (' + R.unc.length + ')']]
+      .map(function (f) { return '<button data-act="filter" data-f="' + f[0] + '" aria-pressed="' + (S.filter === f[0]) + '">' + f[1] + '</button>'; }).join('');
+    var body = shown.slice(0, 400).map(function (r) {
+      var acts = c.status === 'open' && r.st !== 'none' && r.st !== 'match' ? '<div class="acts"><button class="btn sm" data-act="rc" data-c="' + r.code + '">Recount</button>' + (r.st !== 'accepted' ? '<button class="btn sm" data-act="acc" data-c="' + r.code + '">Accept</button>' : '') + '</div>' : '';
+      return '<tr><td class="code">' + r.code + '</td><td>' + esc(r.it.n) + '</td><td style="min-width:220px">' + esc(r.it.d) + '</td>' +
+        '<td class="r">' + fmt(r.sage) + '</td><td class="r">' + fmt(r.first) + '</td><td class="r">' + (r.maxR > 1 ? fmt(r.fin) : '—') + '</td>' +
+        '<td class="r ' + (r.diff < 0 ? 'negv' : r.diff > 0 ? 'pos' : '') + '">' + sfmt(r.diff) + '</td><td class="r ' + (r.val < 0 ? 'negv' : r.val > 0 ? 'pos' : '') + '">' + (r.diff ? rand(r.val) : '—') + '</td>' +
+        '<td><span class="tag ' + r.st + '">' + STLABEL[r.st] + '</span></td><td class="muted">' + esc(r.who) + '</td><td>' + acts + '</td></tr>';
+    }).join('');
+    var empty = shown.length ? '' : '<tr><td colspan="11" class="muted" style="padding:20px">' + (rows.length ? 'Nothing in this view.' : 'No counts yet. Lines appear here as counters save them (refreshes every 10 seconds).') + '</td></tr>';
+    return head +
+      '<div class="hgroup"><b style="font-size:20px">' + esc(c.label) + ' · ' + (LOCNAME[c.loc] || c.loc) + '</b><span class="tag ' + (c.status === 'open' ? 'open">Open' : 'closed">Closed') + '</span></div>' +
+      '<p class="muted">Opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt) + ' · Sage figures as at ' + esc(c.snap || S.snap) + ' · values at most recent cost</p>' +
+      '<div class="tiles">' + tiles + '</div><div class="filters" role="group" aria-label="Show">' + filters + '</div>' +
+      '<div class="tablebox"><table><thead><tr><th>Code</th><th>Sage item</th><th>Description</th><th class="r">Sage qty</th><th class="r">Count</th><th class="r">Recount</th><th class="r">Difference</th><th class="r">Value</th><th>Status</th><th>Counted by</th><th>Action</th></tr></thead><tbody>' + body + empty + '</tbody></table></div>' +
+      (shown.length > 400 ? '<p class="muted">Showing the first 400 lines. The export has them all.</p>' : '') +
+      '<div class="hgroup" style="justify-content:flex-end"><button class="btn" data-act="export">Export to CSV</button>' +
+      (c.status === 'open' ? '<span class="muted">' + (open ? open + ' line(s) still need a recount or a decision' : 'All counted lines resolved') + '</span><button class="btn red" data-act="close-count">Close count</button>' : '<button class="btn" data-act="reopen">Reopen count</button>') + '</div></div>';
+  }
+
+  function viewLabels() {
+    var labs = S.labelSet.map(function (code) {
+      var it = BYCODE[code]; if (!it) return '';
+      return '<div class="lab">' + qrSvg(code) + '<div class="t"><small>MINES RESCUE SERVICES</small><span class="c">' + code + '</span><span class="dd">' + esc(it.d) + '</span><span class="no">Sage ' + esc(it.n) + ' · ' + esc(it.u) + '</span></div>' +
+        '<button class="iconbtn" style="color:#8B1A21;margin-left:auto" data-act="label-del" data-c="' + code + '" aria-label="Remove ' + code + '">' + ICON.trash + '</button></div>';
+    }).join('');
+    return '<div class="wrap wide" style="max-width:860px">' + adminTop('labels') +
+      '<div class="card"><b style="font-size:17px">Shelf labels</b><p class="muted">Add items, then download an A4 sheet of 10 labels per page (90 × 50 mm). The QR works with this app’s scanner and with any phone camera.</p>' +
+      '<div class="search">' + ICON.search + '<label for="lq" class="sr">Find items to add</label><input id="lq" class="field" type="search" autocomplete="off" placeholder="Find items to add" value="' + esc(S.labelQ) + '"></div><div id="lres" class="list"></div></div>' +
+      '<div class="hgroup"><b style="font-size:17px">On the sheet (' + S.labelSet.length + ')</b>' +
+      (S.labelSet.length ? '<button class="btn sm ghost" data-act="label-clear">Clear sheet</button><button class="btn gold sm" data-act="label-pdf">Download label PDF</button>' : '') + '</div>' +
+      (S.labelSet.length ? '<div class="labels">' + labs + '</div>' : '<div class="note plain">No labels yet. Search above, or use “Add to label sheet” on an item.</div>') + '</div>';
+  }
+  function renderLabelResults() {
+    var box = $('lres'); if (!box) return;
+    if (!S.labelQ.trim()) { box.innerHTML = ''; return; }
+    box.innerHTML = search(S.labelQ, 12).items.map(function (it) {
+      var on = S.labelSet.indexOf(it.c) >= 0;
+      return '<button class="row" data-act="label-add" data-c="' + it.c + '"' + (on ? ' disabled' : '') + '><span class="t"><span class="d">' + esc(it.d) + '</span><span class="s"><span class="code">' + it.c + '</span> · ' + esc(it.n) + '</span></span>' + (on ? '<span class="muted">Added</span>' : ICON.plus) + '</button>';
+    }).join('') || '<div class="note plain">No items match.</div>';
+  }
+  function qrText(code) { return APP_URL + '#i-' + code; }
+  function qrSvg(code) {
+    if (!window.qrcode) return '<svg viewBox="0 0 10 10" aria-hidden="true"></svg>';
+    var q = window.qrcode(0, 'M'); q.addData(qrText(code)); q.make();
+    var n = q.getModuleCount(), p = '';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) p += 'M' + (c + 2) + ' ' + (r + 2) + 'h1v1h-1z';
+    return '<svg viewBox="0 0 ' + (n + 4) + ' ' + (n + 4) + '" role="img" aria-label="QR code for ' + code + '" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="' + p + '" fill="#0B1B33"/></svg>';
+  }
+  function labelPdf() {
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), W = 90, H = 50, mx = 10, my = 13.5, gx = 10, gy = 5;
+    S.labelSet.forEach(function (code, i) {
+      var it = BYCODE[code]; if (!it) return;
+      var k = i % 10; if (i > 0 && k === 0) doc.addPage();
+      var x = mx + (k % 2) * (W + gx), y = my + Math.floor(k / 2) * (H + gy);
+      doc.setDrawColor(190); doc.setLineWidth(0.2); doc.roundedRect(x, y, W, H, 2, 2);
+      var q = window.qrcode(0, 'M'); q.addData(qrText(code)); q.make();
+      var n = q.getModuleCount(), size = 38, cell = size / n, qx = x + 4, qy = y + (H - size) / 2;
+      doc.setFillColor(11, 27, 51);
+      for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) doc.rect(qx + c * cell, qy + r * cell, cell + 0.03, cell + 0.03, 'F');
+      var tx = qx + size + 5, tw = x + W - tx - 3;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(74, 91, 118); doc.text('MINES RESCUE SERVICES', tx, y + 9);
+      doc.setFontSize(26); doc.setTextColor(11, 27, 51); doc.text(code, tx, y + 20.5, { charSpace: 1.2 });
+      doc.setFontSize(9); doc.text(doc.splitTextToSize(it.d, tw).slice(0, 3), tx, y + 28);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(74, 91, 118); doc.text('Sage ' + it.n + ' / ' + it.u, tx, y + H - 5);
+    });
+    doc.save('Shelf labels ' + new Date().toISOString().slice(0, 10) + '.pdf');
+  }
+
+  function viewPick() {
+    var open = S.counts.filter(function (c) { return c.status === 'open'; });
+    return '<div class="wrap">' + topBar() + '<div class="h2">Which count are you on?</div>' +
+      open.map(function (c) { return '<button class="btn red tall block" data-act="count" data-id="' + c.id + '" style="flex-direction:column;gap:0;padding:12px"><span style="font-family:var(--display);font-weight:400;font-size:22px">' + (LOCNAME[c.loc] || c.loc) + '</span><span style="font-weight:500;font-size:14px">' + esc(c.label) + '</span></button>'; }).join('') + '</div>';
+  }
+  function viewWait() {
+    return '<div class="wrap">' + topBar() + '<div class="card center" style="padding:32px 20px;gap:10px"><div class="h2">' + (S.countsLoaded ? 'No count is open' : 'Checking for an open count…') + '</div>' +
+      '<p class="muted">A manager opens a count under Stocktake. This screen checks every 20 seconds and moves on by itself.</p><button class="btn" data-act="refresh-counts">Check now</button></div></div>';
+  }
+  function viewPin() {
+    var mgrs = S.users.filter(function (u) { return u.role === 'manager'; }).map(function (u) { return '<button type="button" data-act="pick-user" data-name="' + esc(u.name) + '" aria-pressed="' + (S.pinPick === u.name) + '">' + esc(u.name) + '</button>'; }).join('');
+    return '<div class="wrap" style="padding-top:28px;gap:18px"><div class="center">' + logo() + '</div><div class="h2 center">Leave count mode</div>' +
+      '<p class="muted center">A manager PIN puts this phone back in lookup mode, where quantities show again.</p><div class="users">' + mgrs + '</div>' +
+      '<form class="stack" data-form="pin"><label class="l" for="pin">Manager PIN</label><input id="pin" class="field pin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="····">' +
+      (S.pinErr ? '<div class="note err" role="alert">' + esc(S.pinErr) + '</div>' : '') +
+      '<button class="btn gold tall" type="submit"' + (S.pinPick && !S.busy ? '' : ' disabled') + '>Unlock</button><button class="btn ghost" type="button" data-act="pin-cancel">Back to counting</button></form></div>';
+  }
+
+  /* ----- count mode ----- */
+  function viewCount() {
+    var c = S.count, closed = c && c.status !== 'open', entry;
+    var exit = isMgr() ? '<button class="btn sm ghost" data-act="exit-count">' + ICON.lock + 'Leave count</button>' : '<button class="btn sm ghost" data-act="signout">Sign out</button>';
+    if (closed) entry = '<div class="note plain">This count has been closed by a manager. Nothing more to count here.</div>';
+    else if (!S.cur) {
+      entry = '<div class="card" id="entrycard">' +
+        '<button class="btn scanbtn block" data-act="scan-count" style="color:var(--gold)">' + ICON.scan + 'Scan shelf QR</button>' +
+        '<label class="l" for="entry">or type the code</label>' +
+        '<input id="entry" class="field entry" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="60" placeholder="····" enterkeyhint="go">' +
+        '<div id="entrymsg" class="muted">Looks up on the 4th character. A Bluetooth scanner can type into this box too.</div>' +
+        '<button class="btn ghost" data-act="find-toggle">' + (S.findOpen ? 'Close name search' : 'No label? Find the item by name') + '</button>' +
+        (S.findOpen ? '<div class="search">' + ICON.search + '<label for="findq" class="sr">Find by name</label><input id="findq" class="field" type="search" autocomplete="off" placeholder="Type part of the name" value="' + esc(S.findQ) + '"></div><div id="findres" class="list"></div>' : '') +
+        '<label class="check"><input type="checkbox" id="autoscan"' + (S.autoScan ? ' checked' : '') + '> Open the scanner again after each save</label></div>';
+    } else {
+      var it = BYCODE[S.cur], rc = S.recountRounds[S.cur] && S.recount.indexOf(S.cur) >= 0;
+      entry = '<div class="card" id="entrycard"><div class="hgroup"><span class="chipcode">' + it.c + '</span><span class="muted">Count in ' + esc(it.u) + '</span><button class="btn sm ghost" style="margin-left:auto" data-act="wrong">Wrong item</button></div>' +
+        '<div class="h2" style="font-size:17px">' + esc(it.d) + '</div><div class="muted">Sage ' + esc(it.n) + ' · system quantity hidden</div>' +
+        (rc ? '<div class="note warn">Recount requested. Count the whole item again from scratch.</div>' : '') +
+        '<div id="prevmine"></div>' +
+        '<form class="stack" data-form="qty"><label class="l" for="qty">Quantity counted</label><div class="qrow"><input id="qty" class="field qty" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="0" enterkeyhint="done"><button class="btn red" type="submit" style="min-width:110px;font-size:17px">Save</button></div></form></div>';
+    }
+    return '<div class="wrap">' + topBar(exit) + '<div id="cband"></div><div id="crecount"></div>' + entry +
+      '<div class="hgroup" style="justify-content:space-between"><b>My counts on this sheet</b><span id="mycount" class="muted"></span></div><div id="mylines" class="list" style="gap:6px"></div></div>';
+  }
+  function renderCountLive() {
+    var c = S.count, band = $('cband'); if (!band) return;
+    band.innerHTML = !c ? '<div class="countband"><small>Stocktake</small><strong>Loading…</strong></div>' :
+      '<div class="countband' + (c.status !== 'open' ? ' closed' : '') + '"><small>' + (c.status === 'open' ? 'Counting at' : 'Closed count') + '</small><strong>' + (LOCNAME[c.loc] || c.loc) + '</strong><span>' + esc(c.label) + ' · quantities on hand hidden</span></div>';
+    var rcs = S.recount.filter(function (code) { return BYCODE[code]; });
+    $('crecount').innerHTML = rcs.length && c && c.status === 'open' ? '<div class="card recount"><b>Recount needed (' + rcs.length + ')</b><div class="list" style="gap:6px">' + rcs.map(function (code) {
+      return '<button class="row" data-act="select" data-c="' + code + '" style="background:transparent;border:1px solid var(--line)"><span class="t"><span class="d">' + esc(BYCODE[code].d) + '</span><span class="s"><span class="code">' + code + '</span></span></span></button>';
+    }).join('') + '</div></div>' : '';
+    var saved = S.mine.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+    var savedIds = {}; saved.forEach(function (l) { savedIds[l.id] = 1; });
+    var pend = S.pending.filter(function (p) { return !(p.lineId && savedIds[p.lineId]); });
+    $('mycount').textContent = saved.length + (saved.length === 1 ? ' line' : ' lines') + (pend.length ? ' · ' + pend.length + ' sending' : '');
+    var html = pend.map(function (p) {
+      var it = BYCODE[p.code] || { d: p.code };
+      return '<div class="line ' + (p.status === 'failed' ? 'failed' : 'pending') + '"><span class="code" style="width:54px;font-size:13px">' + p.code + '</span><span class="d">' + esc(it.d) + ' · ' + (p.status === 'failed' ? 'not saved' : 'saving…') + '</span><span class="n">' + fmt(p.qty) + '</span>' +
+        (p.status === 'failed' ? '<button class="btn sm red" data-act="retry" data-id="' + p.clientId + '">Retry</button>' : '') + '</div>';
+    }).join('') + saved.map(function (l) {
+      var it = BYCODE[l.code] || { d: l.code };
+      return '<div class="line"><span class="code" style="width:54px;font-size:13px">' + l.code + '</span><span class="d">' + esc(it.d) + (l.round > 1 ? ' · recount' : '') + '</span><span class="n">' + fmt(l.qty) + '</span>' +
+        (c && c.status === 'open' ? '<button class="iconbtn" data-act="del-line" data-id="' + l.id + '" aria-label="Remove this line">' + ICON.trash + '</button>' : '') + '</div>';
+    }).join('');
+    $('mylines').innerHTML = html || '<div class="note plain center">Scan a shelf QR, enter the quantity, Save. Repeat.</div>';
+    var pm = $('prevmine');
+    if (pm && S.cur) {
+      var round = S.recount.indexOf(S.cur) >= 0 ? S.recountRounds[S.cur] : 1;
+      var prev = saved.filter(function (l) { return l.code === S.cur && l.round === round; }).reduce(function (a, l) { return a + l.qty; }, 0);
+      pm.innerHTML = prev ? '<div class="note warn">You already counted ' + fmt(prev) + ' of this item. This count is added to it (stock in more than one place).</div>' : '';
+    }
+  }
+  function focusEntry() { var e = $(S.cur ? 'qty' : 'entry'); if (e && !(!S.cur && S.curFromScan)) e.focus(); }
+  function selectItem(code, fromScan) { S.cur = code; S.curFromScan = !!fromScan; S.findOpen = false; S.findQ = ''; render(); var q = $('qty'); if (q) q.focus(); }
+  function renderFind() {
+    var box = $('findres'); if (!box) return;
+    if (!S.findQ.trim()) { box.innerHTML = ''; return; }
+    box.innerHTML = search(S.findQ, 15).items.map(function (it) { return '<button class="row" data-act="select" data-c="' + it.c + '"><span class="t"><span class="d">' + esc(it.d) + '</span><span class="s"><span class="code">' + it.c + '</span> · ' + esc(it.n) + '</span></span></button>'; }).join('') || '<div class="note plain">No items match.</div>';
+  }
+  function sendLine(p) {
+    p.status = 'saving'; renderCountLive();
+    api('addLine', { countId: S.countId, code: p.code, qty: p.qty, clientId: p.clientId }).then(function (j) {
+      p.status = 'saved'; p.lineId = j.line.id;
+      if (!S.mine.some(function (l) { return l.id === j.line.id; })) S.mine.push(j.line);
+      S.pending = S.pending.filter(function (x) { return x !== p; });
+      renderCountLive(); if ($('scan').hidden) toast('Saved ' + p.code + ' × ' + fmt(p.qty));
+    }).catch(function (e) { p.status = 'failed'; renderCountLive(); toast(e.message, true); });
+  }
+  function saveQty() {
+    var inp = $('qty'); if (!inp || !S.cur) return;
+    var raw = inp.value.replace(/\s/g, '');
+    if (!/^\d+$/.test(raw)) { toast('Type the quantity as a whole number', true); inp.focus(); return; }
+    var p = { clientId: uid(), code: S.cur, qty: parseInt(raw, 10), status: 'saving' };
+    S.pending.unshift(p);
+    var reopen = S.curFromScan && S.autoScan;
+    S.cur = null; S.curFromScan = false; render();
+    toast('Saving ' + p.code + ' × ' + fmt(p.qty));
+    sendLine(p);
+    if (reopen) setTimeout(function () { openScanner(function (code) { selectItem(code, true); }); }, 350);
+  }
+
+  /* ===== scanner ===== */
+  var scanStream = null, scanRAF = null, scanCb = null, detector = null, canvas = null, jsqrLoading = null, lastBad = 0;
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    if (jsqrLoading) return jsqrLoading;
+    jsqrLoading = new Promise(function (res, rej) { var s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    return jsqrLoading;
+  }
+  function openScanner(cb) {
+    scanCb = cb; $('scan').hidden = false; $('scanmsg').textContent = 'Starting the camera…'; $('scantorch').hidden = true;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { closeScanner(); toast('This browser cannot open the camera. Type the code instead.', true); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }).then(function (st) {
+      scanStream = st; var v = $('scanvid'); v.srcObject = st; v.play().catch(function () { });
+      try { var caps = st.getVideoTracks()[0].getCapabilities ? st.getVideoTracks()[0].getCapabilities() : {}; if (caps.torch) $('scantorch').hidden = false; } catch (e) { }
+      $('scanmsg').textContent = 'Point the camera at the shelf label QR';
+      var useBD = 'BarcodeDetector' in window ? window.BarcodeDetector.getSupportedFormats().then(function (f) { return f.indexOf('qr_code') >= 0; }).catch(function () { return false; }) : Promise.resolve(false);
+      useBD.then(function (ok) {
+        if (ok) { detector = new window.BarcodeDetector({ formats: ['qr_code'] }); loop(); }
+        else loadJsQR().then(function () { detector = null; loop(); }).catch(function () { closeScanner(); toast('The scanner could not load. Type the code instead.', true); });
+      });
+    }).catch(function () { closeScanner(); toast('Camera blocked. Allow camera access for this app in the browser settings, or type the code.', true); });
+  }
+  function loop() {
+    if (!scanStream) return;
+    var v = $('scanvid');
+    if (v.readyState < 2) { scanRAF = setTimeout(loop, 120); return; }
+    if (detector) {
+      detector.detect(v).then(function (codes) { if (codes && codes.length) got(codes[0].rawValue); else scanRAF = setTimeout(loop, 120); }).catch(function () { scanRAF = setTimeout(loop, 200); });
+    } else {
+      canvas = canvas || document.createElement('canvas');
+      var w = 640, h = Math.round(v.videoHeight / v.videoWidth * 640) || 480; canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(v, 0, 0, w, h);
+      var r = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' });
+      if (r && r.data) got(r.data); else scanRAF = setTimeout(loop, 150);
+    }
+  }
+  function got(text) {
+    var code = parseCode(text);
+    if (!code) { if (Date.now() - lastBad > 1500) { $('scanmsg').textContent = 'That QR is not a stock label. Try again.'; lastBad = Date.now(); } scanRAF = setTimeout(loop, 400); return; }
+    try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) { }
+    var cb = scanCb; closeScanner(); if (cb) cb(code);
+  }
+  function closeScanner() {
+    clearTimeout(scanRAF); scanRAF = null;
+    if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
+    var v = $('scanvid'); v.srcObject = null; $('scan').hidden = true;
+  }
+  $('scanclose').addEventListener('click', function () { closeScanner(); if (S.view === 'count') focusEntry(); });
+  $('scantorch').addEventListener('click', function () {
+    if (!scanStream) return; var t = scanStream.getVideoTracks()[0], on = this.textContent === 'Light on', btn = this;
+    t.applyConstraints({ advanced: [{ torch: on }] }).then(function () { btn.textContent = on ? 'Light off' : 'Light on'; }).catch(function () { });
+  });
+
+  /* ===== events ===== */
+  function act(a, d, b) {
+    if (a === 'pick-user') { S.pinPick = d.name; S.pinErr = ''; render(); var p = $('pin'); if (p) p.focus(); }
+    else if (a === 'signout') { var t = S.token; stopPoll(); releaseWake(); S.token = null; S.user = null; S.countId = null; S.pinPick = null; lsSet('stk-session', null); go('login'); if (t) fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: 'logout', token: t }) }).catch(function () { }); }
+    else if (a === 'tab') { stopPoll(); if (d.v === 'counts') { S.countsLoaded = S.counts.length > 0; go('counts'); startPoll(refreshCounts, 20000); } else go(d.v); }
+    else if (a === 'loc') { S.loc = d.l; lsSet('stk-loc', S.loc); render(); }
+    else if (a === 'item') { S.item = d.c; go('item'); }
+    else if (a === 'scan-lookup') openScanner(function (code) { S.item = code; go('item'); });
+    else if (a === 'label-toggle') { var i = S.labelSet.indexOf(d.c); if (i >= 0) S.labelSet.splice(i, 1); else S.labelSet.push(d.c); lsSet('stk-labels', S.labelSet); render(); }
+    else if (a === 'label-add') { if (S.labelSet.indexOf(d.c) < 0) S.labelSet.push(d.c); lsSet('stk-labels', S.labelSet); var y = window.scrollY; render(); window.scrollTo(0, y); var l = $('lq'); if (l) l.focus(); }
+    else if (a === 'label-del') { S.labelSet = S.labelSet.filter(function (x) { return x !== d.c; }); lsSet('stk-labels', S.labelSet); render(); }
+    else if (a === 'label-clear') { S.labelSet = []; lsSet('stk-labels', S.labelSet); render(); }
+    else if (a === 'label-pdf') { try { labelPdf(); } catch (e) { toast('Could not build the PDF', true); } }
+    else if (a === 'new-loc') { S.newLoc = d.l; render(); }
+    else if (a === 'open-count') {
+      var lab = ($('newlabel').value || '').trim() || 'Full count'; S.busy = true; b.disabled = true;
+      api('openCount', { loc: S.newLoc, label: lab }).then(function () { S.newLabel = ''; toast('Count opened at ' + LOCNAME[S.newLoc]); return refreshCounts(); })
+        .catch(function (e) { toast(e.message, true); }).then(function () { S.busy = false; if (S.view === 'counts') render(); });
+    }
+    else if (a === 'refresh-counts') refreshCounts();
+    else if (a === 'count') { stopPoll(); enterCount(d.id); }
+    else if (a === 'review') { S.countId = d.id; S.count = null; S.lines = []; S.filter = 'diff'; go('review'); startPoll(refreshCount, 10000); }
+    else if (a === 'refresh-review') refreshCount();
+    else if (a === 'filter') { S.filter = d.f; render(); }
+    else if (a === 'rc') { api('setRecount', { countId: S.countId, code: d.c }).then(function () { toast('Recount sent to the counters'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
+    else if (a === 'acc') { api('accept', { countId: S.countId, code: d.c }).then(refreshCount).catch(function (e) { toast(e.message, true); }); }
+    else if (a === 'close-count') { api('closeCount', { countId: S.countId }).then(function () { toast('Count closed'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
+    else if (a === 'reopen') { api('reopenCount', { countId: S.countId }).then(refreshCount).catch(function (e) { toast(e.message, true); }); }
+    else if (a === 'export') exportCsv();
+    else if (a === 'exit-count') { S.pinPick = S.user.name; S.pinErr = ''; go('pin'); }
+    else if (a === 'pin-cancel') go('count');
+    else if (a === 'scan-count') openScanner(function (code) { selectItem(code, true); });
+    else if (a === 'find-toggle') { S.findOpen = !S.findOpen; S.findQ = ''; render(); var f = $('findq'); if (f) f.focus(); }
+    else if (a === 'select') selectItem(d.c, false);
+    else if (a === 'wrong') { S.cur = null; S.curFromScan = false; render(); }
+    else if (a === 'retry') { var p2 = S.pending.filter(function (x) { return x.clientId === d.id; })[0]; if (p2) sendLine(p2); }
+    else if (a === 'del-line') { b.disabled = true; api('delLine', { countId: S.countId, lineId: d.id }).then(function () { S.mine = S.mine.filter(function (l) { return l.id !== d.id; }); renderCountLive(); }).catch(function (e) { b.disabled = false; toast(e.message, true); }); }
+  }
+  app.addEventListener('click', function (ev) { var b = ev.target.closest('[data-act]'); if (!b || b.disabled) return; act(b.getAttribute('data-act'), b.dataset, b); });
+  app.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t.id === 'q') { S.q = t.value; renderResults(); }
+    else if (t.id === 'lq') { S.labelQ = t.value; renderLabelResults(); }
+    else if (t.id === 'findq') { S.findQ = t.value; renderFind(); }
+    else if (t.id === 'pin') { t.value = t.value.replace(/\D/g, '').slice(0, 4); }
+    else if (t.id === 'newlabel') { S.newLabel = t.value; }
+    else if (t.id === 'qty') { t.value = t.value.replace(/\D/g, ''); }
+    else if (t.id === 'entry') {
+      var v = t.value.trim().toUpperCase(), msg = $('entrymsg');
+      if (/^[A-Z0-9]{4}$/.test(v) && BYCODE[v]) { selectItem(v, false); return; }
+      if (msg) { if (/^[A-Z0-9]{4}$/.test(v)) { msg.textContent = 'Code ' + v + ' not found. Check the label, or find the item by name.'; msg.style.color = 'var(--red-soft)'; } else { msg.textContent = 'Looks up on the 4th character. A Bluetooth scanner can type into this box too.'; msg.style.color = ''; } }
+    }
+  });
+  app.addEventListener('change', function (ev) { if (ev.target.id === 'autoscan') { S.autoScan = ev.target.checked; lsSet('stk-autoscan', S.autoScan); } });
+  app.addEventListener('keydown', function (ev) {
+    if (ev.target.id === 'entry' && ev.key === 'Enter') {
+      ev.preventDefault(); var code = parseCode(ev.target.value);
+      if (code) selectItem(code, false);
+      else { var m = $('entrymsg'); if (m) { m.textContent = '“' + ev.target.value + '” is not a known code. Check the label, or find the item by name.'; m.style.color = 'var(--red-soft)'; } ev.target.select(); }
+    }
+  });
+  app.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var f = ev.target.getAttribute('data-form');
+    if (f === 'login' || f === 'pin') {
+      var pin = $('pin').value, name = S.pinPick; if (!name) return;
+      S.busy = true; S.pinErr = ''; render();
+      api('login', { name: name, pin: pin }).then(function (j) {
+        S.busy = false;
+        if (f === 'pin') {
+          if (j.role !== 'manager') { S.pinErr = 'Only a manager can unlock this phone.'; render(); return; }
+          stopPoll(); releaseWake(); S.countId = null; S.cur = null; S.token = j.token; S.user = { name: j.name, role: j.role }; saveSession();
+          loadItems().then(function () { go('counts'); startPoll(refreshCounts, 20000); });
+          return;
+        }
+        S.token = j.token; S.user = { name: j.name, role: j.role }; S.app = j.app; S.snap = j.snap; saveSession(); afterLogin();
+      }).catch(function (e) { S.busy = false; S.pinErr = e.message; render(); var p = $('pin'); if (p) p.focus(); });
+    } else if (f === 'qty') saveQty();
+  });
+
+  function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function exportCsv() {
+    var c = S.count, R = computeReview(); if (!c || !R) return;
+    var out = [['Code', 'Sage item', 'Description', 'Unit', 'Location', 'Sage qty', 'Count', 'Recount', 'Final', 'Difference', 'Unit cost', 'Value', 'Status', 'Counted by']];
+    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.it.m.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who]); });
+    var blob = new Blob(['﻿' + out.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n')], { type: 'text/csv' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Stocktake ' + c.loc + ' ' + c.label.replace(/[^\w -]/g, '') + ' ' + String(c.openedAt).slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  /* ===== start ===== */
+  function loadUsers() { return api('users').then(function (j) { S.users = j.users; if (S.view === 'login' || S.view === 'pin') render(); }).catch(function (e) { S.pinErr = 'Cannot reach the stock service: ' + e.message; if (S.view === 'login') render(); }); }
+  function start() {
+    if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { go('setup'); return; }
+    var l = lsGet('stk-loc'); if (LOCS.indexOf(l) >= 0) S.loc = l;
+    var ls = lsGet('stk-labels'); if (Array.isArray(ls)) S.labelSet = ls;
+    var au = lsGet('stk-autoscan'); if (au === false) S.autoScan = false;
+    readHash();
+    loadUsers();
+    var sess = lsGet('stk-session');
+    if (sess && sess.token && sess.user) {
+      S.token = sess.token; S.user = sess.user; S.countId = sess.countId || null;
+      var cached = lsGet('stk-items');
+      if (cached && cached.who === S.user.name && cached.role === S.user.role) { setItems(cached.items); S.snap = cached.snap || ''; }
+      var next = function () {
+        if (S.countId) { S.view = 'count'; render(); startPoll(refreshCount, 15000); requestWake(); takePending(); }
+        else if (isMgr()) { S.view = S.pendingCode ? 'item' : 'stock'; if (S.pendingCode) { S.item = S.pendingCode; S.pendingCode = null; } render(); }
+        else { S.view = 'wait'; render(); startPoll(refreshCounts, 20000); }
+      };
+      if (LIST.length) { next(); loadItems().catch(function () { }); } else { S.view = 'loading'; render(); loadItems().then(next).catch(function (e) { toast(e.message, true); }); }
+    } else go('login');
+  }
+  if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () { }); }); }
+  start();
+})();
+</script>
+</body>
+</html>
