@@ -94,6 +94,17 @@ button:disabled { opacity: .4; cursor: default; }
 .muted { color: var(--muted); font-size: 13px; }
 label.l, .l { font-size: 14px; font-weight: 600; }
 .pin { font-size: 26px; letter-spacing: 12px; text-align: center; }
+/* PIN keypad: no text field, so the browser never offers to save a password */
+.dots { display: flex; justify-content: center; gap: 18px; padding: 6px 0 2px; }
+.dots i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--gold); }
+.dots i.on { background: var(--gold); }
+.dots.shake { animation: shake .35s; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+.keypad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.keypad button { min-height: 62px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); font-family: var(--display); font-size: 26px; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.keypad button:active { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
+.keypad button.fn { font-family: var(--body); font-size: 14px; font-weight: 600; color: var(--soft); }
+.keypad button:disabled { opacity: .45; }
 .users { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .users button { min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; padding: 4px; }
 .users button small { font-size: 11px; color: var(--muted); font-weight: 500; }
@@ -179,7 +190,7 @@ td .acts { display: flex; gap: 6px; }
     view: 'loading', token: null, user: null, app: 'Stock Vs IP', snap: '', users: [], loc: 'CAR', q: '', item: null,
     counts: [], countsLoaded: false, countId: null, count: null, lines: [], mine: [], recount: [], recountRounds: {},
     pending: [], newLoc: 'CAR', newLabel: '', filter: 'diff', cur: null, curFromScan: false, findOpen: false, findQ: '',
-    pinPick: null, pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true
+    pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true
   };
   var LIST = [], BYCODE = {}, BYNO = {}, poll = null, wakeLock = null;
   var app = document.getElementById('app');
@@ -353,11 +364,21 @@ td .acts { display: flex; gap: 6px; }
     return '<div class="wrap" style="padding-top:max(40px,env(safe-area-inset-top,0px));gap:24px">' +
       '<div class="center stack" style="gap:4px">' + logo(true) + '<div class="muted" style="letter-spacing:2px;text-transform:uppercase">Mines Rescue Services · Stores</div></div>' +
       '<div class="stack"><div class="l">Who is signing in?</div><div class="users">' + users + '</div></div>' +
-      '<form class="stack" data-form="login"><label class="l" for="pin">PIN</label>' +
-      '<input id="pin" class="field pin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="····">' +
-      (S.pinErr ? '<div class="note err" role="alert">' + esc(S.pinErr) + '</div>' : '') +
-      '<button class="btn gold tall" type="submit"' + (S.pinPick && !S.busy ? '' : ' disabled') + '>' + (S.busy ? 'Signing in…' : 'Sign in') + '</button></form>' +
+      pinPad('PIN', S.busy ? 'Signing in…' : (S.pinPick ? 'Enter your 4-digit PIN' : 'Tap your name first')) +
       '<p class="muted center">Test version · ' + esc(S.app) + '</p></div>';
+  }
+  function pinPad(label, hint) {
+    var dots = '', i; for (i = 0; i < 4; i++) dots += '<i' + (i < S.pinVal.length ? ' class="on"' : '') + '></i>';
+    var off = (!S.pinPick || S.busy) ? ' disabled' : '';
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(function (k) { return '<button type="button" data-act="pin-key" data-k="' + k + '"' + off + '>' + k + '</button>'; }).join('');
+    keys += '<button type="button" class="fn" data-act="pin-clear"' + off + '>Clear</button>' +
+      '<button type="button" data-act="pin-key" data-k="0"' + off + '>0</button>' +
+      '<button type="button" class="fn" data-act="pin-back" aria-label="Delete last digit"' + off + '>⌫</button>';
+    return '<div class="stack"><div class="l center">' + esc(label) + '</div>' +
+      '<div id="pindots" class="dots" role="status" aria-label="' + S.pinVal.length + ' of 4 digits entered">' + dots + '</div>' +
+      '<div class="muted center">' + esc(hint) + '</div>' +
+      (S.pinErr ? '<div class="note err" role="alert">' + esc(S.pinErr) + '</div>' : '') +
+      '<div class="keypad">' + keys + '</div></div>';
   }
 
   function viewStock() {
@@ -526,9 +547,8 @@ td .acts { display: flex; gap: 6px; }
     var mgrs = S.users.filter(function (u) { return u.role === 'manager'; }).map(function (u) { return '<button type="button" data-act="pick-user" data-name="' + esc(u.name) + '" aria-pressed="' + (S.pinPick === u.name) + '">' + esc(u.name) + '</button>'; }).join('');
     return '<div class="wrap" style="padding-top:28px;gap:18px"><div class="center">' + logo() + '</div><div class="h2 center">Leave count mode</div>' +
       '<p class="muted center">A manager PIN puts this phone back in lookup mode, where quantities show again.</p><div class="users">' + mgrs + '</div>' +
-      '<form class="stack" data-form="pin"><label class="l" for="pin">Manager PIN</label><input id="pin" class="field pin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="····">' +
-      (S.pinErr ? '<div class="note err" role="alert">' + esc(S.pinErr) + '</div>' : '') +
-      '<button class="btn gold tall" type="submit"' + (S.pinPick && !S.busy ? '' : ' disabled') + '>Unlock</button><button class="btn ghost" type="button" data-act="pin-cancel">Back to counting</button></form></div>';
+      pinPad('Manager PIN', S.busy ? 'Unlocking…' : (S.pinPick ? 'Enter the manager\'s 4-digit PIN' : 'Tap a manager first')) +
+      '<button class="btn ghost" type="button" data-act="pin-cancel">Back to counting</button></div>';
   }
 
   /* ----- count mode ----- */
@@ -669,7 +689,10 @@ td .acts { display: flex; gap: 6px; }
 
   /* ===== events ===== */
   function act(a, d, b) {
-    if (a === 'pick-user') { S.pinPick = d.name; S.pinErr = ''; render(); var p = $('pin'); if (p) p.focus(); }
+    if (a === 'pick-user') { S.pinPick = d.name; S.pinVal = ''; S.pinErr = ''; render(); }
+    else if (a === 'pin-key') pinType(d.k);
+    else if (a === 'pin-back') { S.pinVal = S.pinVal.slice(0, -1); S.pinErr = ''; render(); }
+    else if (a === 'pin-clear') { S.pinVal = ''; S.pinErr = ''; render(); }
     else if (a === 'signout') { var t = S.token; stopPoll(); releaseWake(); S.token = null; S.user = null; S.countId = null; S.pinPick = null; lsSet('stk-session', null); go('login'); if (t) fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: 'logout', token: t }) }).catch(function () { }); }
     else if (a === 'tab') { stopPoll(); if (d.v === 'counts') { S.countsLoaded = S.counts.length > 0; go('counts'); startPoll(refreshCounts, 20000); } else go(d.v); }
     else if (a === 'loc') { S.loc = d.l; lsSet('stk-loc', S.loc); render(); }
@@ -696,7 +719,7 @@ td .acts { display: flex; gap: 6px; }
     else if (a === 'close-count') { api('closeCount', { countId: S.countId }).then(function () { toast('Count closed'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'reopen') { api('reopenCount', { countId: S.countId }).then(refreshCount).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'export') exportCsv();
-    else if (a === 'exit-count') { S.pinPick = S.user.name; S.pinErr = ''; go('pin'); }
+    else if (a === 'exit-count') { S.pinPick = S.user.name; S.pinVal = ''; S.pinErr = ''; go('pin'); }
     else if (a === 'pin-cancel') go('count');
     else if (a === 'scan-count') openScanner(function (code) { selectItem(code, true); });
     else if (a === 'find-toggle') { S.findOpen = !S.findOpen; S.findQ = ''; render(); var f = $('findq'); if (f) f.focus(); }
@@ -711,7 +734,6 @@ td .acts { display: flex; gap: 6px; }
     if (t.id === 'q') { S.q = t.value; renderResults(); }
     else if (t.id === 'lq') { S.labelQ = t.value; renderLabelResults(); }
     else if (t.id === 'findq') { S.findQ = t.value; renderFind(); }
-    else if (t.id === 'pin') { t.value = t.value.replace(/\D/g, '').slice(0, 4); }
     else if (t.id === 'newlabel') { S.newLabel = t.value; }
     else if (t.id === 'qty') { t.value = t.value.replace(/\D/g, ''); }
     else if (t.id === 'entry') {
@@ -728,23 +750,43 @@ td .acts { display: flex; gap: 6px; }
       else { var m = $('entrymsg'); if (m) { m.textContent = '“' + ev.target.value + '” is not a known code. Check the label, or find the item by name.'; m.style.color = 'var(--red-soft)'; } ev.target.select(); }
     }
   });
+  /* PIN keypad: digits live only in memory, never in a form field */
+  function pinType(k) {
+    if (!S.pinPick || S.busy || S.pinVal.length >= 4) return;
+    S.pinVal += k; S.pinErr = ''; render();
+    if (S.pinVal.length === 4) setTimeout(pinSubmit, 120);
+  }
+  function pinFail(msg) {
+    S.busy = false; S.pinVal = ''; S.pinErr = msg; render();
+    var d = $('pindots'); if (d) d.classList.add('shake');
+    if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) { } }
+  }
+  function pinSubmit() {
+    var f = S.view, name = S.pinPick, pin = S.pinVal;
+    if ((f !== 'login' && f !== 'pin') || !name || pin.length !== 4 || S.busy) return;
+    S.busy = true; S.pinErr = ''; render();
+    api('login', { name: name, pin: pin }).then(function (j) {
+      S.busy = false; S.pinVal = '';
+      if (f === 'pin') {
+        if (j.role !== 'manager') { pinFail('Only a manager can unlock this phone.'); return; }
+        stopPoll(); releaseWake(); S.countId = null; S.cur = null; S.token = j.token; S.user = { name: j.name, role: j.role }; saveSession();
+        loadItems().then(function () { go('counts'); startPoll(refreshCounts, 20000); });
+        return;
+      }
+      S.token = j.token; S.user = { name: j.name, role: j.role }; S.app = j.app; S.snap = j.snap; saveSession(); afterLogin();
+    }).catch(function (e) { pinFail(e.message); });
+  }
+  // A PC keyboard can still type the PIN on the keypad screens
+  document.addEventListener('keydown', function (ev) {
+    if ((S.view !== 'login' && S.view !== 'pin') || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); pinType(ev.key); }
+    else if (ev.key === 'Backspace') { ev.preventDefault(); if (!S.busy) { S.pinVal = S.pinVal.slice(0, -1); render(); } }
+    else if (ev.key === 'Escape') { if (!S.busy) { S.pinVal = ''; render(); } }
+  });
   app.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var f = ev.target.getAttribute('data-form');
-    if (f === 'login' || f === 'pin') {
-      var pin = $('pin').value, name = S.pinPick; if (!name) return;
-      S.busy = true; S.pinErr = ''; render();
-      api('login', { name: name, pin: pin }).then(function (j) {
-        S.busy = false;
-        if (f === 'pin') {
-          if (j.role !== 'manager') { S.pinErr = 'Only a manager can unlock this phone.'; render(); return; }
-          stopPoll(); releaseWake(); S.countId = null; S.cur = null; S.token = j.token; S.user = { name: j.name, role: j.role }; saveSession();
-          loadItems().then(function () { go('counts'); startPoll(refreshCounts, 20000); });
-          return;
-        }
-        S.token = j.token; S.user = { name: j.name, role: j.role }; S.app = j.app; S.snap = j.snap; saveSession(); afterLogin();
-      }).catch(function (e) { S.busy = false; S.pinErr = e.message; render(); var p = $('pin'); if (p) p.focus(); });
-    } else if (f === 'qty') saveQty();
+    if (f === 'qty') saveQty();
   });
 
   function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
