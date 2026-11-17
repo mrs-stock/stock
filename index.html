@@ -831,7 +831,7 @@ td .acts { display: flex; gap: 6px; }
     ['Adjustment_Details', ['ADJENSEQ', 'LINENO', 'ITEMNO', 'LOCATION', 'TRANSTYPE', 'QUANTITY', 'UNIT', 'CONVERSION', 'EXTCOST', 'COMMENTS', 'WOFFACCT', 'STOCKITEM', 'AVGCOST', 'COSTUNIT']],
     ['Adjustment_Header_Opt__Fields', ['ADJENSEQ', 'OPTFIELD', 'VALUE', 'TYPE', 'LENGTH', 'DECIMALS', 'ALLOWNULL', 'VALIDATE', 'SWSET', 'VALINDEX', 'VALIFTEXT', 'VALIFMONEY', 'VALIFNUM', 'VALIFLONG', 'VALIFBOOL', 'VALIFDATE', 'VALIFTIME', 'FDESC', 'VDESC']],
     ['Adjustment_Detail_Opt__Fields', ['ADJENSEQ', 'LINENO', 'OPTFIELD', 'VALUE', 'TYPE', 'LENGTH', 'DECIMALS', 'ALLOWNULL', 'VALIDATE', 'SWSET', 'VALINDEX', 'VALIFTEXT', 'VALIFMONEY', 'VALIFNUM', 'VALIFLONG', 'VALIFBOOL', 'VALIFDATE', 'VALIFTIME', 'FDESC', 'VDESC']],
-    ['Adjustment_Detail_Serial_Number', ['ADJENSEQ', 'LINENO', 'SERIALNUMF', 'COST', 'SCOUNT']],
+    ['Adjustment_Detail_Serial_Number', ['ADJENSEQ', 'LINENO', 'SERIALNUMF', 'COST', 'SCOUNT'], 'Adjustment_Detail_Serial_Numbers'],
     ['Adjustment_Detail_Lot_Numbers', ['ADJENSEQ', 'LINENO', 'LOTNUMF', 'EXPIRYDATE', 'QTY', 'QTYSQ', 'COST']]
   ];
   function r2(v) { return Math.round(v * 100) / 100; }
@@ -870,7 +870,7 @@ td .acts { display: flex; gap: 6px; }
     var data = {};
     data.Adjustment_Headers = [[1, 1, P.doc, P.desc, dt, P.fy, P.fp, P.ref, 1, 'ADMIN', dt]];
     data.Adjustment_Details = P.lines.map(function (l) { return [1, l.lineNo, l.item, c.loc, l.type, l.qty, l.unit, 1, l.ext, null, P.woff, true, l.cost, l.unit]; });
-    return SAGE_SHEETS.map(function (sh) { return { name: sh[0], head: sh[1], rows: data[sh[0]] || [] }; });
+    return SAGE_SHEETS.map(function (sh) { return { name: sh[0], head: sh[1], table: sh[2] || sh[0], rows: data[sh[0]] || [] }; });
   }
   var xlsxLoading = null;
   function loadXlsx() {
@@ -880,7 +880,7 @@ td .acts { display: flex; gap: 6px; }
     return xlsxLoading;
   }
   function sageWorkbook(c, P) {
-    var wb = XLSX.utils.book_new();
+    var wb = XLSX.utils.book_new(), names = [];
     sageSheets(c, P).forEach(function (sh) {
       var ws = XLSX.utils.aoa_to_sheet([sh.head]);
       sh.rows.forEach(function (row, ri) {
@@ -892,14 +892,17 @@ td .acts { display: flex; gap: 6px; }
       });
       ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sh.rows.length, c: sh.head.length - 1 } });
       XLSX.utils.book_append_sheet(wb, ws, sh.name);
+      // Sage finds each table by a workbook-level name over header + rows (as in Jo-Anne's template)
+      names.push({ Name: sh.table, Ref: sh.name + '!$A$1:$' + XLSX.utils.encode_col(sh.head.length - 1) + '$' + (sh.rows.length + 1) });
     });
+    wb.Workbook = { Names: names };
     return wb;
   }
   function sageDownload() {
     var c = S.count, R = computeReview(); if (!c || !R) return;
     var P = sagePlan(c, R); if (!P.ok) { S.sagePanel = true; render(); return; }
     loadXlsx().then(function () {
-      XLSX.writeFile(sageWorkbook(c, P), 'SAGE IMPORT - IC Adjustment - ' + P.doc + '.xlsx', { bookType: 'xlsx' });
+      XLSX.writeFile(sageWorkbook(c, P), 'SAGE IMPORT - IC Adjustment - ' + P.doc + '.xlsx', { bookType: 'xlsx', bookSST: true });
       toast('Sage file downloaded: ' + P.doc);
     }).catch(function (e) { toast(e.message, true); });
   }
