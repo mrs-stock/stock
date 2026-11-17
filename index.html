@@ -191,7 +191,7 @@ td .acts { display: flex; gap: 6px; }
     view: 'loading', token: null, user: null, app: 'Stock Vs IP', snap: '', users: [], loc: 'CAR', q: '', item: null,
     counts: [], countsLoaded: false, countId: null, count: null, lines: [], mine: [], recount: [], recountRounds: {},
     pending: [], newLoc: 'CAR', newLabel: '', filter: 'diff', cur: null, curFromScan: false, findOpen: false, findQ: '',
-    pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true
+    sagePanel: false, pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true
   };
   var LIST = [], BYCODE = {}, BYNO = {}, poll = null, wakeLock = null;
   var app = document.getElementById('app');
@@ -436,6 +436,9 @@ td .acts { display: flex; gap: 6px; }
       '<div class="hgroup" style="justify-content:space-between"><b style="font-size:17px">Stocktakes</b><button class="btn sm ghost" data-act="refresh-counts">Refresh</button></div><div class="stack">' + list + '</div></div>';
   }
 
+  /* Sage average cost for the count's station (Items tab CostCAR/EVA/WEL/STE); falls back to the item's most recent cost */
+  function stCost(it, li) { var k = it.k && it.k[li]; return k > 0 ? k : it.m; }
+  function stCostSrc(it, li) { var k = it.k && it.k[li]; return k > 0 ? 'avg' : it.m > 0 ? 'mrc' : 'none'; }
   var STLABEL = { match: 'Match', diff: 'Difference', recount: 'Recount requested', recounted: 'Recounted', accepted: 'Accepted', none: 'Not counted' };
   function computeReview() {
     var c = S.count; if (!c) return null;
@@ -446,13 +449,13 @@ td .acts { display: flex; gap: 6px; }
       var ls = g[code], maxR = 1;
       ls.forEach(function (l) { if (l.round > maxR) maxR = l.round; });
       var sum = function (r) { return ls.filter(function (l) { return l.round === r; }).reduce(function (a, l) { return a + l.qty; }, 0); };
-      var fin = sum(maxR), first = sum(1), sage = it.q[li], diff = fin - sage, val = diff * it.m, req = rc[code] || 0, st;
+      var fin = sum(maxR), first = sum(1), sage = it.q[li], diff = fin - sage, cost = stCost(it, li), val = diff * cost, req = rc[code] || 0, st;
       if (acc[code]) st = 'accepted'; else if (req > maxR) st = 'recount'; else if (diff === 0) st = 'match'; else if (maxR > 1) st = 'recounted'; else st = 'diff';
       var who = {}; ls.forEach(function (l) { who[l.by] = 1; });
-      rows.push({ it: it, code: code, sage: sage, first: first, fin: fin, maxR: maxR, diff: diff, val: val, st: st, who: Object.keys(who).join(', ') });
+      rows.push({ it: it, code: code, sage: sage, first: first, fin: fin, maxR: maxR, diff: diff, cost: cost, val: val, st: st, who: Object.keys(who).join(', ') });
     });
     rows.sort(function (a, b) { return Math.abs(b.val) - Math.abs(a.val) || a.it.d.localeCompare(b.it.d); });
-    var unc = LIST.filter(function (it) { return it.q[li] !== 0 && !g[it.c]; }).map(function (it) { var sage = it.q[li]; return { it: it, code: it.c, sage: sage, first: null, fin: 0, maxR: 0, diff: -sage, val: -sage * it.m, st: 'none', who: '' }; });
+    var unc = LIST.filter(function (it) { return it.q[li] !== 0 && !g[it.c]; }).map(function (it) { var sage = it.q[li], cost = stCost(it, li); return { it: it, code: it.c, sage: sage, first: null, fin: 0, maxR: 0, diff: -sage, cost: cost, val: -sage * cost, st: 'none', who: '' }; });
     return { rows: rows, unc: unc };
   }
   function viewReview() {
@@ -478,12 +481,12 @@ td .acts { display: flex; gap: 6px; }
     var empty = shown.length ? '' : '<tr><td colspan="11" class="muted" style="padding:20px">' + (rows.length ? 'Nothing in this view.' : 'No counts yet. Lines appear here as counters save them (refreshes every 10 seconds).') + '</td></tr>';
     return head +
       '<div class="hgroup"><b style="font-size:20px">' + esc(c.label) + ' · ' + (LOCNAME[c.loc] || c.loc) + '</b><span class="tag ' + (c.status === 'open' ? 'open">Open' : 'closed">Closed') + '</span></div>' +
-      '<p class="muted">Opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt) + ' · Sage figures as at ' + esc(c.snap || S.snap) + ' · values at most recent cost</p>' +
+      '<p class="muted">Opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt) + ' · Sage figures as at ' + esc(c.snap || S.snap) + ' · values at Sage average cost for ' + (LOCNAME[c.loc] || c.loc) + '</p>' +
       '<div class="tiles">' + tiles + '</div><div class="filters" role="group" aria-label="Show">' + filters + '</div>' +
       '<div class="tablebox"><table><thead><tr><th>Code</th><th>Sage item</th><th>Description</th><th class="r">Sage qty</th><th class="r">Count</th><th class="r">Recount</th><th class="r">Difference</th><th class="r">Value</th><th>Status</th><th>Counted by</th><th>Action</th></tr></thead><tbody>' + body + empty + '</tbody></table></div>' +
       (shown.length > 400 ? '<p class="muted">Showing the first 400 lines. The export has them all.</p>' : '') +
-      '<div class="hgroup" style="justify-content:flex-end"><button class="btn" data-act="export">Export to CSV</button>' +
-      (c.status === 'open' ? '<span class="muted">' + (open ? open + ' line(s) still need a recount or a decision' : 'All counted lines resolved') + '</span><button class="btn red" data-act="close-count">Close count</button>' : '<button class="btn" data-act="reopen">Reopen count</button>') + '</div></div>';
+      '<div class="hgroup" style="justify-content:flex-end"><button class="btn" data-act="export">Export to CSV</button><button class="btn" data-act="sage-check">Export for Sage</button>' +
+      (c.status === 'open' ? '<span class="muted">' + (open ? open + ' line(s) still need a recount or a decision' : 'All counted lines resolved') + '</span><button class="btn red" data-act="close-count">Close count</button>' : '<button class="btn" data-act="reopen">Reopen count</button>') + '</div>' + (S.sagePanel ? sagePanel(c, R) : '') + '</div>';
   }
 
   function viewLabels() {
@@ -736,7 +739,7 @@ td .acts { display: flex; gap: 6px; }
     }
     else if (a === 'refresh-counts') refreshCounts();
     else if (a === 'count') { stopPoll(); enterCount(d.id); }
-    else if (a === 'review') { S.countId = d.id; S.count = null; S.lines = []; S.filter = 'diff'; go('review'); startPoll(refreshCount, 10000); }
+    else if (a === 'review') { S.countId = d.id; S.count = null; S.lines = []; S.filter = 'diff'; S.sagePanel = false; go('review'); startPoll(refreshCount, 10000); }
     else if (a === 'refresh-review') refreshCount();
     else if (a === 'filter') { S.filter = d.f; render(); }
     else if (a === 'rc') { api('setRecount', { countId: S.countId, code: d.c }).then(function () { toast('Recount sent to the counters'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
@@ -744,6 +747,9 @@ td .acts { display: flex; gap: 6px; }
     else if (a === 'close-count') { api('closeCount', { countId: S.countId }).then(function () { toast('Count closed'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'reopen') { api('reopenCount', { countId: S.countId }).then(refreshCount).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'export') exportCsv();
+    else if (a === 'sage-check') { S.sagePanel = true; render(); setTimeout(function () { window.scrollTo(0, document.body.scrollHeight); }, 30); }
+    else if (a === 'sage-close') { S.sagePanel = false; render(); }
+    else if (a === 'sage-download') sageDownload();
     else if (a === 'exit-count') { S.pinPick = S.user.name; S.pinVal = ''; S.pinErr = ''; go('pin'); }
     else if (a === 'pin-cancel') go('count');
     else if (a === 'scan-count') openScanner(function (code) { selectItem(code, true); });
@@ -814,11 +820,110 @@ td .acts { display: flex; gap: 6px; }
     if (f === 'qty') saveQty();
   });
 
+
+  /* ===== Export for Sage: I/C Adjustments import file (layout of IC Adjustments Template2, tested in live Sage 17/11/2026) =====
+     Rules: count must be closed; every counted difference accepted; only counted + accepted differences go in the file;
+     items not counted stay as they are in Sage; type 5 = Both Increase, 6 = Both Decrease (qty and cost move together);
+     cost = Sage average cost for the station; one adjustment per count; write-off account per station, written without the dash. */
+  var WOFF = { CAR: '0D040CAR', EVA: '0D040EVA', STE: '0D040STE', WEL: '0D040WEL' };
+  var SAGE_SHEETS = [
+    ['Adjustment_Headers', ['ADJENSEQ', 'TRANSNUM', 'DOCNUM', 'HDRDESC', 'TRANSDATE', 'FISCYEAR', 'FISCPERIOD', 'REFERENCE', 'STATUS', 'ENTEREDBY', 'DATEBUS']],
+    ['Adjustment_Details', ['ADJENSEQ', 'LINENO', 'ITEMNO', 'LOCATION', 'TRANSTYPE', 'QUANTITY', 'UNIT', 'CONVERSION', 'EXTCOST', 'COMMENTS', 'WOFFACCT', 'STOCKITEM', 'AVGCOST', 'COSTUNIT']],
+    ['Adjustment_Header_Opt__Fields', ['ADJENSEQ', 'OPTFIELD', 'VALUE', 'TYPE', 'LENGTH', 'DECIMALS', 'ALLOWNULL', 'VALIDATE', 'SWSET', 'VALINDEX', 'VALIFTEXT', 'VALIFMONEY', 'VALIFNUM', 'VALIFLONG', 'VALIFBOOL', 'VALIFDATE', 'VALIFTIME', 'FDESC', 'VDESC']],
+    ['Adjustment_Detail_Opt__Fields', ['ADJENSEQ', 'LINENO', 'OPTFIELD', 'VALUE', 'TYPE', 'LENGTH', 'DECIMALS', 'ALLOWNULL', 'VALIDATE', 'SWSET', 'VALINDEX', 'VALIFTEXT', 'VALIFMONEY', 'VALIFNUM', 'VALIFLONG', 'VALIFBOOL', 'VALIFDATE', 'VALIFTIME', 'FDESC', 'VDESC']],
+    ['Adjustment_Detail_Serial_Number', ['ADJENSEQ', 'LINENO', 'SERIALNUMF', 'COST', 'SCOUNT']],
+    ['Adjustment_Detail_Lot_Numbers', ['ADJENSEQ', 'LINENO', 'LOTNUMF', 'EXPIRYDATE', 'QTY', 'QTYSQ', 'COST']]
+  ];
+  function r2(v) { return Math.round(v * 100) / 100; }
+  function sagePlan(c, R) {
+    var li = LOCS.indexOf(c.loc), why = [];
+    if (c.status !== 'closed') why.push('Close the count first, so nothing can change after the export.');
+    var open = R.rows.filter(function (r) { return r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'; });
+    if (open.length) why.push(open.length + ' counted line(s) still need Accept or a recount (' + open.slice(0, 6).map(function (r) { return r.it.n; }).join(', ') + (open.length > 6 ? ', …' : '') + ').');
+    if (!WOFF[c.loc]) why.push('No write-off account for ' + c.loc + '.');
+    var go = R.rows.filter(function (r) { return r.st === 'accepted' && r.diff !== 0; });
+    var nocost = go.filter(function (r) { return !(stCost(r.it, li) > 0); });
+    if (nocost.length) why.push(nocost.length + ' item(s) have no cost in Sage at ' + c.loc + ' (' + nocost.slice(0, 6).map(function (r) { return r.it.n; }).join(', ') + '). Ask Maryke for the cost first.');
+    var lj = String(c.openedAt), d = new Date(lj); if (isNaN(d)) d = new Date();
+    var y = d.getFullYear(), m = d.getMonth() + 1, dd = d.getDate();
+    var fy = m >= 7 ? y + 1 : y, fp = m >= 7 ? m - 6 : m + 6;
+    var p2 = function (x) { return ('0' + x).slice(-2); };
+    var doc = ('STK-' + c.loc + '-' + String(c.id).replace(/^C/, '').slice(0, 13).replace(/(\d{8})-(\d{4})\d*/, '$1-$2')).slice(0, 22);
+    var lines = go.map(function (r, i) {
+      var cost = stCost(r.it, li), qty = Math.abs(r.diff);
+      return { lineNo: (i + 1) * 100, item: r.it.n, desc: r.it.d, type: r.diff > 0 ? 5 : 6, qty: qty, unit: r.it.u, cost: Math.round(cost * 1e6) / 1e6, ext: r2(qty * cost), src: stCostSrc(r.it, li), diff: r.diff };
+    });
+    var up = lines.filter(function (l) { return l.type === 5; }), down = lines.filter(function (l) { return l.type === 6; });
+    var vUp = up.reduce(function (a, l) { return a + l.ext; }, 0), vDown = down.reduce(function (a, l) { return a + l.ext; }, 0);
+    if (!go.length && !why.length) why.push('There are no accepted differences. Sage already matches this count, so there is nothing to import.');
+    return {
+      ok: !why.length, why: why, lines: lines, up: up.length, down: down.length, vUp: r2(vUp), vDown: r2(vDown), net: r2(vUp - vDown),
+      fallback: lines.filter(function (l) { return l.src !== 'avg'; }), unc: R.unc.length,
+      doc: doc, y: y, m: m, d: dd, dmy: p2(dd) + '/' + p2(m) + '/' + y, fy: String(fy), fp: fp, woff: WOFF[c.loc],
+      desc: ('Stocktake ' + c.loc + ' ' + c.label + ' ' + p2(dd) + '/' + p2(m) + '/' + y).slice(0, 60),
+      ref: ('Stock Vs IP ' + c.id).slice(0, 60)
+    };
+  }
+  function sageSheets(c, P) {
+    var serial = Math.round((Date.UTC(P.y, P.m - 1, P.d) - Date.UTC(1899, 11, 30)) / 86400000);
+    var dt = { t: 'n', v: serial, z: 'yyyy/mm/dd' };
+    var data = {};
+    data.Adjustment_Headers = [[1, 1, P.doc, P.desc, dt, P.fy, P.fp, P.ref, 1, 'ADMIN', dt]];
+    data.Adjustment_Details = P.lines.map(function (l) { return [1, l.lineNo, l.item, c.loc, l.type, l.qty, l.unit, 1, l.ext, null, P.woff, true, l.cost, l.unit]; });
+    return SAGE_SHEETS.map(function (sh) { return { name: sh[0], head: sh[1], rows: data[sh[0]] || [] }; });
+  }
+  var xlsxLoading = null;
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve();
+    if (xlsxLoading) return xlsxLoading;
+    xlsxLoading = new Promise(function (res, rej) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = res; s.onerror = function () { xlsxLoading = null; rej(new Error('Could not load the Excel writer. Check the connection and try again.')); }; document.head.appendChild(s); });
+    return xlsxLoading;
+  }
+  function sageWorkbook(c, P) {
+    var wb = XLSX.utils.book_new();
+    sageSheets(c, P).forEach(function (sh) {
+      var ws = XLSX.utils.aoa_to_sheet([sh.head]);
+      sh.rows.forEach(function (row, ri) {
+        row.forEach(function (v, ci) {
+          if (v == null) return;
+          var ref = XLSX.utils.encode_cell({ r: ri + 1, c: ci });
+          ws[ref] = typeof v === 'object' ? { t: v.t, v: v.v, z: v.z } : typeof v === 'number' ? { t: 'n', v: v } : typeof v === 'boolean' ? { t: 'b', v: v } : { t: 's', v: String(v) };
+        });
+      });
+      ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sh.rows.length, c: sh.head.length - 1 } });
+      XLSX.utils.book_append_sheet(wb, ws, sh.name);
+    });
+    return wb;
+  }
+  function sageDownload() {
+    var c = S.count, R = computeReview(); if (!c || !R) return;
+    var P = sagePlan(c, R); if (!P.ok) { S.sagePanel = true; render(); return; }
+    loadXlsx().then(function () {
+      XLSX.writeFile(sageWorkbook(c, P), 'SAGE IMPORT - IC Adjustment - ' + P.doc + '.xlsx', { bookType: 'xlsx' });
+      toast('Sage file downloaded: ' + P.doc);
+    }).catch(function (e) { toast(e.message, true); });
+  }
+  function sagePanel(c, R) {
+    var P = sagePlan(c, R);
+    var close = '<button class="btn sm ghost" data-act="sage-close" style="margin-left:auto">Close</button>';
+    if (!P.ok) return '<div class="card" style="margin-top:12px"><div class="hgroup"><b style="font-size:17px">Export for Sage: not ready yet</b>' + close + '</div>' +
+      P.why.map(function (w) { return '<div class="note warn">' + esc(w) + '</div>'; }).join('') + '</div>';
+    var rows = [['Document number', P.doc], ['Adjustment date', P.dmy], ['Sage year / period', P.fy + ' - ' + ('0' + P.fp).slice(-2)], ['Write-off account', P.woff],
+      ['Increase lines (type 5)', fmt(P.up) + ' · ' + rand(P.vUp)], ['Decrease lines (type 6)', fmt(P.down) + ' · ' + rand(-P.vDown)], ['Net effect on stock value', rand(P.net)]]
+      .map(function (r) { return '<div class="tile o"><span>' + r[0] + '</span><b style="font-size:17px">' + esc(r[1]) + '</b></div>'; }).join('');
+    var notes = '<div class="note plain">' + fmt(P.unc) + ' item(s) with Sage stock were not counted. They are <b>not</b> in the file, so Sage keeps their quantities.</div>' +
+      (P.fallback.length ? '<div class="note warn">' + P.fallback.length + ' line(s) have no Sage average cost at ' + c.loc + ' and use the most recent cost instead: ' + esc(P.fallback.slice(0, 8).map(function (l) { return l.item; }).join(', ')) + (P.fallback.length > 8 ? ', …' : '') + '. Maryke can check these after the import.</div>' : '');
+    return '<div class="card" style="margin-top:12px"><div class="hgroup"><b style="font-size:17px">Export for Sage: ready</b>' + close + '</div>' +
+      '<div class="tiles">' + rows + '</div>' + notes +
+      '<div class="note plain">In Sage: Inventory Control › I/C Transactions › Adjustments › File › Import › Excel. Open ' + esc(P.doc) + ', check the lines, then post. Sage refuses the same document twice, so a file can only be imported once.</div>' +
+      '<div class="hgroup" style="justify-content:flex-end"><button class="btn red" data-act="sage-download">Download Sage file</button></div></div>';
+  }
+
   function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function exportCsv() {
     var c = S.count, R = computeReview(); if (!c || !R) return;
     var out = [['Code', 'Sage item', 'Description', 'Unit', 'Location', 'Sage qty', 'Count', 'Recount', 'Final', 'Difference', 'Unit cost', 'Value', 'Status', 'Counted by']];
-    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.it.m.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who]); });
+    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.cost.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who]); });
     var blob = new Blob(['﻿' + out.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n')], { type: 'text/csv' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Stocktake ' + c.loc + ' ' + c.label.replace(/[^\w -]/g, '') + ' ' + String(c.openedAt).slice(0, 10) + '.csv';
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
