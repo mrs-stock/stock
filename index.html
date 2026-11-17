@@ -825,6 +825,7 @@ td .acts { display: flex; gap: 6px; }
      Rules: count must be closed; every counted difference accepted; only counted + accepted differences go in the file;
      items not counted stay as they are in Sage; type 5 = Both Increase, 6 = Both Decrease (qty and cost move together);
      cost = Sage average cost for the station; one adjustment per count; write-off account per station, written without the dash. */
+  /* ADJENSEQ/TRANSNUM 0: Sage gives each import the next free sequence (a fixed 1 clashes with existing adjustments; tested 17/11/2026) */
   var WOFF = { CAR: '0D040CAR', EVA: '0D040EVA', STE: '0D040STE', WEL: '0D040WEL' };
   var SAGE_SHEETS = [
     ['Adjustment_Headers', ['ADJENSEQ', 'TRANSNUM', 'DOCNUM', 'HDRDESC', 'TRANSDATE', 'FISCYEAR', 'FISCPERIOD', 'REFERENCE', 'STATUS', 'ENTEREDBY', 'DATEBUS']],
@@ -868,8 +869,8 @@ td .acts { display: flex; gap: 6px; }
     var serial = Math.round((Date.UTC(P.y, P.m - 1, P.d) - Date.UTC(1899, 11, 30)) / 86400000);
     var dt = { t: 'n', v: serial, z: 'yyyy/mm/dd' };
     var data = {};
-    data.Adjustment_Headers = [[1, 1, P.doc, P.desc, dt, P.fy, P.fp, P.ref, 1, 'ADMIN', dt]];
-    data.Adjustment_Details = P.lines.map(function (l) { return [1, l.lineNo, l.item, c.loc, l.type, l.qty, l.unit, 1, l.ext, null, P.woff, true, l.cost, l.unit]; });
+    data.Adjustment_Headers = [[0, 0, P.doc, P.desc, dt, P.fy, P.fp, P.ref, 1, 'ADMIN', dt]];
+    data.Adjustment_Details = P.lines.map(function (l) { return [0, l.lineNo, l.item, c.loc, l.type, l.qty, l.unit, 1, l.ext, null, P.woff, true, l.cost, l.unit]; });
     return SAGE_SHEETS.map(function (sh) { return { name: sh[0], head: sh[1], table: sh[2] || sh[0], rows: data[sh[0]] || [] }; });
   }
   var xlsxLoading = null;
