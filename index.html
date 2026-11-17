@@ -554,9 +554,15 @@ td .acts { display: flex; gap: 6px; }
   }
 
   function viewPick() {
-    var open = S.counts.filter(function (c) { return c.status === 'open'; });
+    var open = S.counts.filter(function (c) { return c.status === 'open'; })
+      .sort(function (a, b) { return (Date.parse(b.openedAt) || 0) - (Date.parse(a.openedAt) || 0); });
     return '<div class="wrap">' + topBar() + '<div class="h2">Which count are you on?</div>' +
-      open.map(function (c) { return '<button class="btn red tall block" data-act="count" data-id="' + c.id + '" style="flex-direction:column;gap:0;padding:12px"><span style="font-family:var(--display);font-weight:400;font-size:22px">' + (LOCNAME[c.loc] || c.loc) + '</span><span style="font-weight:500;font-size:14px">' + esc(c.label) + '</span></button>'; }).join('') + '</div>';
+      open.map(function (c) { return '<button class="btn red tall block" data-act="count" data-id="' + c.id + '" style="flex-direction:column;gap:0;padding:12px"><span style="font-family:var(--display);font-weight:400;font-size:22px">' + (LOCNAME[c.loc] || c.loc) + '</span><span style="font-weight:500;font-size:14px">' + esc(c.label) + '</span><span style="font-weight:400;font-size:12px;opacity:.85;margin-top:2px">Started ' + started(c.openedAt) + (c.openedBy ? ' · by ' + esc(c.openedBy) : '') + '</span></button>'; }).join('') + '</div>';
+  }
+  function started(iso) {
+    if (!iso) return 'date unknown'; var d = new Date(iso); if (isNaN(d)) return esc(iso);
+    var M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return d.getDate() + ' ' + M[d.getMonth()] + ' ' + d.getFullYear() + ', ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   }
   function viewWait() {
     return '<div class="wrap">' + topBar() + '<div class="card center" style="padding:32px 20px;gap:10px"><div class="h2">' + (S.countsLoaded ? 'No count is open' : 'Checking for an open count…') + '</div>' +
