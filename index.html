@@ -118,6 +118,20 @@ label.l, .l { font-size: 14px; font-weight: 600; }
 .entry { font-family: var(--display); font-size: 30px; letter-spacing: 8px; text-align: center; text-transform: uppercase; min-height: 64px; border: 2px solid var(--line); background: var(--deep); }
 .qty { font-family: var(--display); font-size: 36px; text-align: center; min-height: 70px; border: 2px solid var(--red); background: var(--deep); flex: 1; min-width: 0; }
 .qrow { display: flex; gap: 10px; }
+/* scan-first count screen (19 Nov 2026) */
+.scanbig { min-height: 210px; width: 100%; flex-direction: column; gap: 12px; font-size: 21px; font-weight: 700; border: 3px solid var(--gold); background: rgba(226,178,60,.08); color: var(--gold); border-radius: 20px; }
+.scanbig svg { width: 76px; height: 76px; }
+.scanbig small { font-size: 13px; font-weight: 400; color: var(--soft); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.grid2 .btn { min-height: 48px; font-size: 14px; color: var(--soft); }
+.sheetback { position: fixed; inset: 0; background: rgba(7,18,38,.65); z-index: 20; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-width: 560px; margin: 0 auto; max-height: 94vh; overflow-y: auto; background: var(--panel); border-top: 1px solid var(--line); border-radius: 24px 24px 0 0; padding: 10px 16px max(20px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -12px 32px rgba(0,0,0,.4); }
+.sheet .grab { align-self: center; width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
+.qtyshow { min-height: 74px; border-radius: 14px; border: 2px solid var(--red); background: var(--deep); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 42px; }
+.qtyshow.empty { color: var(--dim); }
+.kpad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.kpad button { min-height: 58px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); font-size: 24px; font-weight: 600; touch-action: manipulation; }
+.kpad button.fn { background: transparent; color: var(--soft); font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .line { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 10px; border: 1px solid var(--line2); }
 .line .d { flex: 1; min-width: 0; font-size: 13px; color: var(--soft); line-height: 1.3; overflow-wrap: anywhere; }
 .line .n { font-size: 20px; min-width: 40px; }
@@ -191,7 +205,7 @@ td .acts { display: flex; gap: 6px; }
     view: 'loading', token: null, user: null, app: 'Stock Vs IP', snap: '', users: [], loc: 'CAR', q: '', item: null,
     counts: [], countsLoaded: false, countId: null, count: null, lines: [], mine: [], recount: [], recountRounds: {},
     pending: [], newLoc: 'CAR', newLabel: '', filter: 'diff', cur: null, curFromScan: false, findOpen: false, findQ: '',
-    sagePanel: false, pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true
+    sagePanel: false, pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true, typeOpen: false, qtyVal: ''
   };
   var LIST = [], BYCODE = {}, BYNO = {}, poll = null, wakeLock = null;
   var app = document.getElementById('app');
@@ -586,20 +600,24 @@ td .acts { display: flex; gap: 6px; }
     if (closed) entry = '<div class="note plain">This count has been closed by a manager. Nothing more to count here.</div>';
     else if (!S.cur) {
       entry = '<div class="card" id="entrycard">' +
-        '<button class="btn scanbtn block" data-act="scan-count" style="color:var(--gold)">' + ICON.scan + 'Scan shelf QR</button>' +
-        '<label class="l" for="entry">or type the code</label>' +
-        '<input id="entry" class="field entry" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="60" placeholder="····" enterkeyhint="go">' +
-        '<div id="entrymsg" class="muted">Looks up on the 4th character. A Bluetooth scanner can type into this box too.</div>' +
-        '<button class="btn ghost" data-act="find-toggle">' + (S.findOpen ? 'Close name search' : 'No label? Find the item by name') + '</button>' +
+        '<button class="btn scanbig" data-act="scan-count">' + ICON.scan + '<span>Tap to scan shelf label</span><small>Nothing to type until you have scanned</small></button>' +
+        '<div class="grid2"><button class="btn ghost" data-act="type-toggle">' + (S.typeOpen ? 'Close code box' : 'Type code') + '</button><button class="btn ghost" data-act="find-toggle">' + (S.findOpen ? 'Close search' : 'No label? Find') + '</button></div>' +
+        (S.typeOpen ? '<label class="l" for="entry">Type the 4-letter code</label><input id="entry" class="field entry" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="60" placeholder="····" enterkeyhint="go"><div id="entrymsg" class="muted">Looks up on the 4th character. A Bluetooth scanner can type into this box too.</div>' : '') +
         (S.findOpen ? '<div class="search">' + ICON.search + '<label for="findq" class="sr">Find by name</label><input id="findq" class="field" type="search" autocomplete="off" placeholder="Type part of the name" value="' + esc(S.findQ) + '"></div><div id="findres" class="list"></div>' : '') +
         '<label class="check"><input type="checkbox" id="autoscan"' + (S.autoScan ? ' checked' : '') + '> Open the scanner again after each save</label></div>';
     } else {
       var it = BYCODE[S.cur], rc = S.recountRounds[S.cur] && S.recount.indexOf(S.cur) >= 0;
-      entry = '<div class="card" id="entrycard"><div class="hgroup"><span class="chipcode">' + it.c + '</span><span class="muted">Count in ' + esc(it.u) + '</span><button class="btn sm ghost" style="margin-left:auto" data-act="wrong">Wrong item</button></div>' +
-        '<div class="h2" style="font-size:17px">' + esc(it.d) + '</div><div class="muted">Sage ' + esc(it.n) + ' · system quantity hidden</div>' +
+      var kp = ['1','2','3','4','5','6','7','8','9'].map(function (k) { return '<button type="button" data-act="kp" data-k="' + k + '">' + k + '</button>'; }).join('') +
+        '<button type="button" class="fn" data-act="kp" data-k="C">Clear</button><button type="button" data-act="kp" data-k="0">0</button>' +
+        '<button type="button" class="fn" data-act="kp" data-k="B" aria-label="Delete last digit"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H8l-6 7 6 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m16 9-6 6M10 9l6 6"/></svg></button>';
+      entry = '<div class="sheetback"></div><div class="sheet" id="entrycard" role="dialog" aria-label="Quantity counted"><div class="grab"></div>' +
+        '<div class="hgroup"><span class="chipcode">' + it.c + '</span><span class="muted">Count in ' + esc(it.u) + '</span><button class="btn sm ghost" style="margin-left:auto" data-act="wrong">Wrong item</button></div>' +
+        '<div class="h2" style="font-size:17px">' + esc(it.d) + '</div><div class="muted">' + esc(it.n) + ' · system quantity hidden</div>' +
         (rc ? '<div class="note warn">Recount requested. Count the whole item again from scratch.</div>' : '') +
         '<div id="prevmine"></div>' +
-        '<form class="stack" data-form="qty"><label class="l" for="qty">Quantity counted</label><div class="qrow"><input id="qty" class="field qty" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="0" enterkeyhint="done"><button class="btn red" type="submit" style="min-width:110px;font-size:17px">Save</button></div></form></div>';
+        '<label class="l">Quantity counted</label><output id="qtyshow" class="qtyshow' + (S.qtyVal ? '' : ' empty') + '">' + (S.qtyVal || '0') + '</output>' +
+        '<div class="kpad">' + kp + '</div>' +
+        '<button class="btn red tall block" data-act="save-qty">' + (S.curFromScan && S.autoScan ? 'Save &amp; scan next' : 'Save') + '</button></div>';
     }
     return '<div class="wrap">' + topBar(exit) + '<div id="cband"></div><div id="crecount"></div>' + entry +
       '<div class="hgroup" style="justify-content:space-between"><b>My counts on this sheet</b><span id="mycount" class="muted"></span></div><div id="mylines" class="list" style="gap:6px"></div></div>';
@@ -633,8 +651,8 @@ td .acts { display: flex; gap: 6px; }
       pm.innerHTML = prev ? '<div class="note warn">You already counted ' + fmt(prev) + ' of this item. This count is added to it (stock in more than one place).</div>' : '';
     }
   }
-  function focusEntry() { var e = $(S.cur ? 'qty' : 'entry'); if (e && !(!S.cur && S.curFromScan)) e.focus(); }
-  function selectItem(code, fromScan) { S.cur = code; S.curFromScan = !!fromScan; S.findOpen = false; S.findQ = ''; render(); var q = $('qty'); if (q) q.focus(); }
+  function focusEntry() { if (S.cur || !S.typeOpen) return; var e = $('entry'); if (e) e.focus(); }
+  function selectItem(code, fromScan) { S.cur = code; S.curFromScan = !!fromScan; S.findOpen = false; S.findQ = ''; S.typeOpen = false; S.qtyVal = ''; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); render(); }
   function renderFind() {
     var box = $('findres'); if (!box) return;
     if (!S.findQ.trim()) { box.innerHTML = ''; return; }
@@ -650,13 +668,13 @@ td .acts { display: flex; gap: 6px; }
     }).catch(function (e) { p.status = 'failed'; renderCountLive(); toast(e.message, true); });
   }
   function saveQty() {
-    var inp = $('qty'); if (!inp || !S.cur) return;
-    var raw = inp.value.replace(/\s/g, '');
-    if (!/^\d+$/.test(raw)) { toast('Type the quantity as a whole number', true); inp.focus(); return; }
+    if (!S.cur) return;
+    var raw = S.qtyVal;
+    if (!/^\d+$/.test(raw)) { toast('Tap the quantity on the keypad first', true); return; }
     var p = { clientId: uid(), code: S.cur, qty: parseInt(raw, 10), status: 'saving' };
     S.pending.unshift(p);
     var reopen = S.curFromScan && S.autoScan;
-    S.cur = null; S.curFromScan = false; render();
+    S.cur = null; S.curFromScan = false; S.qtyVal = ''; render();
     toast('Saving ' + p.code + ' × ' + fmt(p.qty));
     sendLine(p);
     if (reopen) setTimeout(function () { openScanner(function (code) { selectItem(code, true); }); }, 350);
@@ -753,9 +771,17 @@ td .acts { display: flex; gap: 6px; }
     else if (a === 'exit-count') { S.pinPick = S.user.name; S.pinVal = ''; S.pinErr = ''; go('pin'); }
     else if (a === 'pin-cancel') go('count');
     else if (a === 'scan-count') openScanner(function (code) { selectItem(code, true); });
-    else if (a === 'find-toggle') { S.findOpen = !S.findOpen; S.findQ = ''; render(); var f = $('findq'); if (f) f.focus(); }
+    else if (a === 'find-toggle') { S.findOpen = !S.findOpen; S.typeOpen = false; S.findQ = ''; render(); var f = $('findq'); if (f) f.focus(); }
     else if (a === 'select') selectItem(d.c, false);
-    else if (a === 'wrong') { S.cur = null; S.curFromScan = false; render(); }
+    else if (a === 'wrong') { S.cur = null; S.curFromScan = false; S.qtyVal = ''; render(); }
+    else if (a === 'type-toggle') { S.typeOpen = !S.typeOpen; S.findOpen = false; render(); var en = $('entry'); if (en) en.focus(); }
+    else if (a === 'kp') {
+      var k = d.k, v = S.qtyVal;
+      if (k === 'C') v = ''; else if (k === 'B') v = v.slice(0, -1); else if (v.length < 7) v = (v === '0' ? '' : v) + k;
+      S.qtyVal = v; var qs = $('qtyshow'); if (qs) { qs.textContent = v || '0'; qs.classList.toggle('empty', !v); }
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { } }
+    }
+    else if (a === 'save-qty') saveQty();
     else if (a === 'retry') { var p2 = S.pending.filter(function (x) { return x.clientId === d.id; })[0]; if (p2) sendLine(p2); }
     else if (a === 'del-line') { b.disabled = true; api('delLine', { countId: S.countId, lineId: d.id }).then(function () { S.mine = S.mine.filter(function (l) { return l.id !== d.id; }); renderCountLive(); }).catch(function (e) { b.disabled = false; toast(e.message, true); }); }
   }
