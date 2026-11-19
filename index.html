@@ -454,6 +454,12 @@ td .acts { display: flex; gap: 6px; }
   function stCost(it, li) { var k = it.k && it.k[li]; return k > 0 ? k : it.m; }
   function stCostSrc(it, li) { var k = it.k && it.k[li]; return k > 0 ? 'avg' : it.m > 0 ? 'mrc' : 'none'; }
   var STLABEL = { match: 'Match', diff: 'Difference', recount: 'Recount requested', recounted: 'Recounted', accepted: 'Accepted', none: 'Not counted' };
+  /* Negative or consignment stock in Sage (19 Nov 2026): these lines are never adjusted by the stocktake.
+     Negative = issued before the receipt/transfer was posted; consignment = supplier stock in ZCA/ZEV/ZWE/ZST that may sit on the same shelf.
+     Maryke fixes them in Sage by hand (post the receipt or the consignment transfer); the Sage file leaves them out. */
+  function consQ(it, li) { return it.z ? (Number(it.z[li]) || 0) : 0; }
+  function flagTag(r) { return r.flag === 'neg' ? ' <span class="tag recount">Negative in Sage</span>' : r.flag === 'cons' ? ' <span class="tag recounted">Consignment</span>' : ''; }
+  function sageCell(r) { return fmt(r.sage) + (r.cons ? '<div class="muted" style="font-size:11px;white-space:nowrap">+' + fmt(r.cons) + ' consignment = ' + fmt(r.book) + '</div>' : ''); }
   function computeReview() {
     var c = S.count; if (!c) return null;
     var li = LOCS.indexOf(c.loc), g = {}, rc = c.recount || {}, acc = c.accepted || {}, rows = [];
@@ -466,36 +472,38 @@ td .acts { display: flex; gap: 6px; }
       var fin = sum(maxR), first = sum(1), sage = it.q[li], diff = fin - sage, cost = stCost(it, li), val = diff * cost, req = rc[code] || 0, st;
       if (acc[code]) st = 'accepted'; else if (req > maxR) st = 'recount'; else if (diff === 0) st = 'match'; else if (maxR > 1) st = 'recounted'; else st = 'diff';
       var who = {}; ls.forEach(function (l) { who[l.by] = 1; });
-      rows.push({ it: it, code: code, sage: sage, first: first, fin: fin, maxR: maxR, diff: diff, cost: cost, val: val, st: st, who: Object.keys(who).join(', ') });
+      var cons = consQ(it, li), flag = sage < 0 ? 'neg' : cons ? 'cons' : '';
+      rows.push({ it: it, code: code, sage: sage, first: first, fin: fin, maxR: maxR, diff: diff, cost: cost, val: val, st: st, who: Object.keys(who).join(', '), cons: cons, flag: flag, book: sage + cons });
     });
     rows.sort(function (a, b) { return Math.abs(b.val) - Math.abs(a.val) || a.it.d.localeCompare(b.it.d); });
-    var unc = LIST.filter(function (it) { return it.q[li] !== 0 && !g[it.c]; }).map(function (it) { var sage = it.q[li], cost = stCost(it, li); return { it: it, code: it.c, sage: sage, first: null, fin: 0, maxR: 0, diff: -sage, cost: cost, val: -sage * cost, st: 'none', who: '' }; });
+    var unc = LIST.filter(function (it) { return it.q[li] !== 0 && !g[it.c]; }).map(function (it) { var sage = it.q[li], cost = stCost(it, li), cons = consQ(it, li); return { it: it, code: it.c, sage: sage, first: null, fin: 0, maxR: 0, diff: -sage, cost: cost, val: -sage * cost, st: 'none', who: '', cons: cons, flag: sage < 0 ? 'neg' : cons ? 'cons' : '', book: sage + cons }; });
     return { rows: rows, unc: unc };
   }
   function viewReview() {
     var c = S.count;
     var head = '<div class="wrap wide">' + adminTop('counts') + '<div class="hgroup"><button class="btn ghost sm" data-act="tab" data-v="counts">' + ICON.back + 'Back to stocktakes</button><button class="btn sm ghost" data-act="refresh-review" style="margin-left:auto">Refresh</button></div>';
     if (!c) return head + '<p class="muted">Loading count…</p></div>';
-    var R = computeReview(), rows = R.rows, diffs = rows.filter(function (r) { return r.diff !== 0; });
+    var R = computeReview(), rows = R.rows, diffs = rows.filter(function (r) { return r.diff !== 0 && !r.flag; }), fix = rows.filter(function (r) { return r.flag; });
     var net = diffs.reduce(function (a, r) { return a + r.val; }, 0), gross = diffs.reduce(function (a, r) { return a + Math.abs(r.val); }, 0);
-    var open = rows.filter(function (r) { return r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'; }).length, rcOpen = rows.filter(function (r) { return r.st === 'recount'; }).length;
-    var shown = S.filter === 'all' ? rows : S.filter === 'diff' ? diffs : S.filter === 'recount' ? rows.filter(function (r) { return r.st === 'recount'; }) : R.unc;
-    var tiles = [['Items counted', fmt(rows.length), ''], ['Matched Sage', fmt(rows.length - diffs.length), 'color:var(--ok)'], ['Differences', fmt(diffs.length), 'color:var(--red-soft)'],
-      ['Net value of differences', rand(net), net < 0 ? 'color:var(--red-soft)' : 'color:var(--ok)'], ['Gross value (size of the problem)', rand(gross), ''], ['Recounts waiting', fmt(rcOpen), 'color:var(--warn)']]
+    var open = rows.filter(function (r) { return !r.flag && (r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'); }).length, rcOpen = rows.filter(function (r) { return r.st === 'recount'; }).length;
+    var shown = S.filter === 'all' ? rows : S.filter === 'diff' ? diffs : S.filter === 'recount' ? rows.filter(function (r) { return r.st === 'recount'; }) : S.filter === 'fix' ? fix : R.unc;
+    var tiles = [['Items counted', fmt(rows.length), ''], ['Matched Sage', fmt(rows.length - diffs.length - fix.length), 'color:var(--ok)'], ['Differences', fmt(diffs.length), 'color:var(--red-soft)'],
+      ['Net value of differences', rand(net), net < 0 ? 'color:var(--red-soft)' : 'color:var(--ok)'], ['Gross value (size of the problem)', rand(gross), ''], ['Recounts waiting', fmt(rcOpen), 'color:var(--warn)'], ['Fix in Sage by hand (negative / consignment)', fmt(fix.length), 'color:var(--warn)']]
       .map(function (t) { return '<div class="tile"><span>' + t[0] + '</span><b style="' + t[2] + '">' + t[1] + '</b></div>'; }).join('');
-    var filters = [['diff', 'Differences (' + diffs.length + ')'], ['all', 'All counted (' + rows.length + ')'], ['recount', 'Recount (' + rcOpen + ')'], ['unc', 'Not counted, Sage has stock (' + R.unc.length + ')']]
+    var filters = [['diff', 'Differences (' + diffs.length + ')'], ['all', 'All counted (' + rows.length + ')'], ['recount', 'Recount (' + rcOpen + ')'], ['fix', 'Fix in Sage (' + fix.length + ')'], ['unc', 'Not counted, Sage has stock (' + R.unc.length + ')']]
       .map(function (f) { return '<button data-act="filter" data-f="' + f[0] + '" aria-pressed="' + (S.filter === f[0]) + '">' + f[1] + '</button>'; }).join('');
     var body = shown.slice(0, 400).map(function (r) {
       var acts = c.status === 'open' && r.st !== 'none' && r.st !== 'match' ? '<div class="acts"><button class="btn sm" data-act="rc" data-c="' + r.code + '">Recount</button>' + (r.st !== 'accepted' ? '<button class="btn sm" data-act="acc" data-c="' + r.code + '">Accept</button>' : '') + '</div>' : '';
       return '<tr><td class="code">' + r.code + '</td><td>' + esc(r.it.n) + '</td><td style="min-width:220px">' + esc(r.it.d) + '</td>' +
-        '<td class="r">' + fmt(r.sage) + '</td><td class="r">' + fmt(r.first) + '</td><td class="r">' + (r.maxR > 1 ? fmt(r.fin) : '—') + '</td>' +
-        '<td class="r ' + (r.diff < 0 ? 'negv' : r.diff > 0 ? 'pos' : '') + '">' + sfmt(r.diff) + '</td><td class="r ' + (r.val < 0 ? 'negv' : r.val > 0 ? 'pos' : '') + '">' + (r.diff ? rand(r.val) : '—') + '</td>' +
-        '<td><span class="tag ' + r.st + '">' + STLABEL[r.st] + '</span></td><td class="muted">' + esc(r.who) + '</td><td>' + acts + '</td></tr>';
+        '<td class="r">' + sageCell(r) + '</td><td class="r">' + fmt(r.first) + '</td><td class="r">' + (r.maxR > 1 ? fmt(r.fin) : '—') + '</td>' +
+        '<td class="r ' + (r.diff < 0 ? 'negv' : r.diff > 0 ? 'pos' : '') + '">' + sfmt(r.diff) + (r.cons && r.first != null ? '<div class="muted" style="font-size:11px;white-space:nowrap">vs Sage + cons: ' + sfmt(r.fin - r.book) + '</div>' : '') + '</td><td class="r ' + (r.val < 0 ? 'negv' : r.val > 0 ? 'pos' : '') + '">' + (r.diff ? rand(r.val) : '—') + '</td>' +
+        '<td><span class="tag ' + r.st + '">' + STLABEL[r.st] + '</span>' + flagTag(r) + '</td><td class="muted">' + esc(r.who) + '</td><td>' + acts + '</td></tr>';
     }).join('');
     var empty = shown.length ? '' : '<tr><td colspan="11" class="muted" style="padding:20px">' + (rows.length ? 'Nothing in this view.' : 'No counts yet. Lines appear here as counters save them (refreshes every 10 seconds).') + '</td></tr>';
     return head +
       '<div class="hgroup"><b style="font-size:20px">' + esc(c.label) + ' · ' + (LOCNAME[c.loc] || c.loc) + '</b><span class="tag ' + (c.status === 'open' ? 'open">Open' : 'closed">Closed') + '</span></div>' +
       '<p class="muted">Opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt) + ' · Sage figures as at ' + esc(c.snap || S.snap) + ' · values at Sage average cost for ' + (LOCNAME[c.loc] || c.loc) + '</p>' +
+      (fix.length ? '<div class="note warn">' + fix.length + ' counted item(s) are negative or hold consignment stock in Sage. They are left out of the totals and out of the Sage file. Fix them in Sage by hand: post the missing receipt or the consignment transfer first, then compare the count with Sage again. Filter: Fix in Sage.</div>' : '') +
       '<div class="tiles">' + tiles + '</div><div class="filters" role="group" aria-label="Show">' + filters + '</div>' +
       '<div class="tablebox"><table><thead><tr><th>Code</th><th>Sage item</th><th>Description</th><th class="r">Sage qty</th><th class="r">Count</th><th class="r">Recount</th><th class="r">Difference</th><th class="r">Value</th><th>Status</th><th>Counted by</th><th>Action</th></tr></thead><tbody>' + body + empty + '</tbody></table></div>' +
       (shown.length > 400 ? '<p class="muted">Showing the first 400 lines. The export has them all.</p>' : '') +
@@ -865,10 +873,10 @@ td .acts { display: flex; gap: 6px; }
   function sagePlan(c, R) {
     var li = LOCS.indexOf(c.loc), why = [];
     if (c.status !== 'closed') why.push('Close the count first, so nothing can change after the export.');
-    var open = R.rows.filter(function (r) { return r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'; });
+    var open = R.rows.filter(function (r) { return !r.flag && (r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'); });
     if (open.length) why.push(open.length + ' counted line(s) still need Accept or a recount (' + open.slice(0, 6).map(function (r) { return r.it.n; }).join(', ') + (open.length > 6 ? ', …' : '') + ').');
     if (!WOFF[c.loc]) why.push('No write-off account for ' + c.loc + '.');
-    var go = R.rows.filter(function (r) { return r.st === 'accepted' && r.diff !== 0; });
+    var go = R.rows.filter(function (r) { return !r.flag && r.st === 'accepted' && r.diff !== 0; }), fix = R.rows.filter(function (r) { return r.flag; });
     var nocost = go.filter(function (r) { return !(stCost(r.it, li) > 0); });
     if (nocost.length) why.push(nocost.length + ' item(s) have no cost in Sage at ' + c.loc + ' (' + nocost.slice(0, 6).map(function (r) { return r.it.n; }).join(', ') + '). Ask Maryke for the cost first.');
     var lj = String(c.openedAt), d = new Date(lj); if (isNaN(d)) d = new Date();
@@ -885,7 +893,7 @@ td .acts { display: flex; gap: 6px; }
     if (!go.length && !why.length) why.push('There are no accepted differences. Sage already matches this count, so there is nothing to import.');
     return {
       ok: !why.length, why: why, lines: lines, up: up.length, down: down.length, vUp: r2(vUp), vDown: r2(vDown), net: r2(vUp - vDown),
-      fallback: lines.filter(function (l) { return l.src !== 'avg'; }), unc: R.unc.length,
+      fallback: lines.filter(function (l) { return l.src !== 'avg'; }), unc: R.unc.length, fix: fix,
       doc: doc, y: y, m: m, d: dd, dmy: p2(dd) + '/' + p2(m) + '/' + y, fy: String(fy), fp: fp, woff: WOFF[c.loc],
       desc: ('Stocktake ' + c.loc + ' ' + c.label + ' ' + p2(dd) + '/' + p2(m) + '/' + y).slice(0, 60),
       ref: ('Stock Vs IP ' + c.id).slice(0, 60)
@@ -941,7 +949,8 @@ td .acts { display: flex; gap: 6px; }
     var rows = [['Document number', P.doc], ['Adjustment date', P.dmy], ['Sage year / period', P.fy + ' - ' + ('0' + P.fp).slice(-2)], ['Write-off account', P.woff],
       ['Increase lines (type 5)', fmt(P.up) + ' · ' + rand(P.vUp)], ['Decrease lines (type 6)', fmt(P.down) + ' · ' + rand(-P.vDown)], ['Net effect on stock value', rand(P.net)]]
       .map(function (r) { return '<div class="tile o"><span>' + r[0] + '</span><b style="font-size:17px">' + esc(r[1]) + '</b></div>'; }).join('');
-    var notes = '<div class="note plain">' + fmt(P.unc) + ' item(s) with Sage stock were not counted. They are <b>not</b> in the file, so Sage keeps their quantities.</div>' +
+    var notes = (P.fix.length ? '<div class="note warn"><b>' + P.fix.length + ' line(s) left out of this file</b> because they are negative or hold consignment stock in Sage: ' + esc(P.fix.slice(0, 12).map(function (r) { return r.it.n + ' (count ' + r.fin + ', Sage ' + r.sage + (r.cons ? ' + ' + r.cons + ' cons.' : '') + ')'; }).join(', ')) + (P.fix.length > 12 ? ', …' : '') + '. Fix these in Sage by hand. The CSV export lists them all.</div>' : '') +
+      '<div class="note plain">' + fmt(P.unc) + ' item(s) with Sage stock were not counted. They are <b>not</b> in the file, so Sage keeps their quantities.</div>' +
       (P.fallback.length ? '<div class="note warn">' + P.fallback.length + ' line(s) have no Sage average cost at ' + c.loc + ' and use the most recent cost instead: ' + esc(P.fallback.slice(0, 8).map(function (l) { return l.item; }).join(', ')) + (P.fallback.length > 8 ? ', …' : '') + '. Maryke can check these after the import.</div>' : '');
     return '<div class="card" style="margin-top:12px"><div class="hgroup"><b style="font-size:17px">Export for Sage: ready</b>' + close + '</div>' +
       '<div class="tiles">' + rows + '</div>' + notes +
@@ -952,8 +961,8 @@ td .acts { display: flex; gap: 6px; }
   function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function exportCsv() {
     var c = S.count, R = computeReview(); if (!c || !R) return;
-    var out = [['Code', 'Sage item', 'Description', 'Unit', 'Location', 'Sage qty', 'Count', 'Recount', 'Final', 'Difference', 'Unit cost', 'Value', 'Status', 'Counted by']];
-    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.cost.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who]); });
+    var out = [['Code', 'Sage item', 'Description', 'Unit', 'Location', 'Sage qty', 'Consignment qty', 'Sage + consignment', 'Count', 'Recount', 'Final', 'Difference', 'Unit cost', 'Value', 'Status', 'Counted by', 'Sage action']];
+    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.cons || 0, r.book, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.cost.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who, r.flag === 'neg' ? 'Fix in Sage by hand: negative in Sage' : r.flag === 'cons' ? 'Fix in Sage by hand: consignment' : (r.st === 'accepted' && r.diff ? 'In Sage file' : '')]); });
     var blob = new Blob(['﻿' + out.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n')], { type: 'text/csv' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Stocktake ' + c.loc + ' ' + c.label.replace(/[^\w -]/g, '') + ' ' + String(c.openedAt).slice(0, 10) + '.csv';
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
