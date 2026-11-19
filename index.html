@@ -458,7 +458,27 @@ td .acts { display: flex; gap: 6px; }
      Negative = issued before the receipt/transfer was posted; consignment = supplier stock in ZCA/ZEV/ZWE/ZST that may sit on the same shelf.
      Maryke fixes them in Sage by hand (post the receipt or the consignment transfer); the Sage file leaves them out. */
   function consQ(it, li) { return it.z ? (Number(it.z[li]) || 0) : 0; }
-  function flagTag(r) { return r.flag === 'neg' ? ' <span class="tag recount">Negative in Sage</span>' : r.flag === 'cons' ? ' <span class="tag recounted">Consignment</span>' : ''; }
+  function flagTag(r) {
+    return (r.flag === 'neg' ? ' <span class="tag recount">Started negative in Sage</span>' : r.flag === 'cons' ? ' <span class="tag recounted">Consignment stock</span>' : '') +
+      (r.swap ? ' <span class="tag recount">Size swap?</span><div class="muted" style="font-size:11px;margin-top:4px">Other size' + (r.swap.length > 1 ? 's' : '') + ': ' + esc(r.swap.map(function (o) { return o.it.d + ' ' + sfmt(o.diff); }).join(' · ')) + (r.swapBal ? ' · <b>balances</b>' : '') + '</div>' : '');
+  }
+  /* Size families (19 Nov 2026): regalia R/, fire PPE F/ and PPE P/ items that differ only by size.
+     One size short and another size over usually means the wrong size was issued, not missing stock. */
+  var SIZE_RE = /\b(XXXS|XXS|XS|S|SM|SML|SMALL|M|MED|MEDIUM|L|LG|LAR|LRG|LARGE|XL|XXL|XXXL|[2-9]XL|[2-9]X|X+L|\d{1,2})\b/g;
+  function famKey(it) {
+    if (!/^[RFP]\//.test(it.n)) return null;
+    return it.n.charAt(0) + ':' + it.d.toUpperCase().replace(/[()]/g, ' ').replace(SIZE_RE, ' ').replace(/[\s\-\/]+/g, ' ').trim();
+  }
+  function markSwaps(rows) {
+    var fam = {};
+    rows.forEach(function (r) { r.swap = null; r.swapBal = false; var k = famKey(r.it); if (k && r.diff) (fam[k] = fam[k] || []).push(r); });
+    Object.keys(fam).forEach(function (k) {
+      var g = fam[k], up = g.filter(function (r) { return r.diff > 0; }), dn = g.filter(function (r) { return r.diff < 0; });
+      if (!up.length || !dn.length) return;
+      var bal = g.reduce(function (a, r) { return a + r.diff; }, 0) === 0;
+      g.forEach(function (r) { r.swap = (r.diff > 0 ? dn : up); r.swapBal = bal; });
+    });
+  }
   function sageCell(r) { return fmt(r.sage) + (r.cons ? '<div class="muted" style="font-size:11px;white-space:nowrap">+' + fmt(r.cons) + ' consignment = ' + fmt(r.book) + '</div>' : ''); }
   function computeReview() {
     var c = S.count; if (!c) return null;
@@ -476,6 +496,7 @@ td .acts { display: flex; gap: 6px; }
       rows.push({ it: it, code: code, sage: sage, first: first, fin: fin, maxR: maxR, diff: diff, cost: cost, val: val, st: st, who: Object.keys(who).join(', '), cons: cons, flag: flag, book: sage + cons });
     });
     rows.sort(function (a, b) { return Math.abs(b.val) - Math.abs(a.val) || a.it.d.localeCompare(b.it.d); });
+    markSwaps(rows);
     var unc = LIST.filter(function (it) { return it.q[li] !== 0 && !g[it.c]; }).map(function (it) { var sage = it.q[li], cost = stCost(it, li), cons = consQ(it, li); return { it: it, code: it.c, sage: sage, first: null, fin: 0, maxR: 0, diff: -sage, cost: cost, val: -sage * cost, st: 'none', who: '', cons: cons, flag: sage < 0 ? 'neg' : cons ? 'cons' : '', book: sage + cons }; });
     return { rows: rows, unc: unc };
   }
@@ -483,18 +504,18 @@ td .acts { display: flex; gap: 6px; }
     var c = S.count;
     var head = '<div class="wrap wide">' + adminTop('counts') + '<div class="hgroup"><button class="btn ghost sm" data-act="tab" data-v="counts">' + ICON.back + 'Back to stocktakes</button><button class="btn sm ghost" data-act="refresh-review" style="margin-left:auto">Refresh</button></div>';
     if (!c) return head + '<p class="muted">Loading count…</p></div>';
-    var R = computeReview(), rows = R.rows, diffs = rows.filter(function (r) { return r.diff !== 0 && !r.flag; }), fix = rows.filter(function (r) { return r.flag; });
+    var R = computeReview(), rows = R.rows, diffs = rows.filter(function (r) { return r.diff !== 0 && !r.flag; }), fix = rows.filter(function (r) { return r.flag; }), diffView = rows.filter(function (r) { return r.diff !== 0; });
     var net = diffs.reduce(function (a, r) { return a + r.val; }, 0), gross = diffs.reduce(function (a, r) { return a + Math.abs(r.val); }, 0);
     var open = rows.filter(function (r) { return !r.flag && (r.st === 'recount' || r.st === 'diff' || r.st === 'recounted'); }).length, rcOpen = rows.filter(function (r) { return r.st === 'recount'; }).length;
-    var shown = S.filter === 'all' ? rows : S.filter === 'diff' ? diffs : S.filter === 'recount' ? rows.filter(function (r) { return r.st === 'recount'; }) : S.filter === 'fix' ? fix : R.unc;
+    var shown = S.filter === 'all' ? rows : S.filter === 'diff' ? diffView : S.filter === 'recount' ? rows.filter(function (r) { return r.st === 'recount'; }) : S.filter === 'fix' ? fix : R.unc;
     var tiles = [['Items counted', fmt(rows.length), ''], ['Matched Sage', fmt(rows.length - diffs.length - fix.length), 'color:var(--ok)'], ['Differences', fmt(diffs.length), 'color:var(--red-soft)'],
       ['Net value of differences', rand(net), net < 0 ? 'color:var(--red-soft)' : 'color:var(--ok)'], ['Gross value (size of the problem)', rand(gross), ''], ['Recounts waiting', fmt(rcOpen), 'color:var(--warn)'], ['Fix in Sage by hand (negative / consignment)', fmt(fix.length), 'color:var(--warn)']]
       .map(function (t) { return '<div class="tile"><span>' + t[0] + '</span><b style="' + t[2] + '">' + t[1] + '</b></div>'; }).join('');
-    var filters = [['diff', 'Differences (' + diffs.length + ')'], ['all', 'All counted (' + rows.length + ')'], ['recount', 'Recount (' + rcOpen + ')'], ['fix', 'Fix in Sage (' + fix.length + ')'], ['unc', 'Not counted, Sage has stock (' + R.unc.length + ')']]
+    var filters = [['diff', 'Differences (' + diffView.length + ')'], ['all', 'All counted (' + rows.length + ')'], ['recount', 'Recount (' + rcOpen + ')'], ['fix', 'Fix in Sage (' + fix.length + ')'], ['unc', 'Not counted, Sage has stock (' + R.unc.length + ')']]
       .map(function (f) { return '<button data-act="filter" data-f="' + f[0] + '" aria-pressed="' + (S.filter === f[0]) + '">' + f[1] + '</button>'; }).join('');
     var body = shown.slice(0, 400).map(function (r) {
       var acts = c.status === 'open' && r.st !== 'none' && r.st !== 'match' ? '<div class="acts"><button class="btn sm" data-act="rc" data-c="' + r.code + '">Recount</button>' + (r.st !== 'accepted' ? '<button class="btn sm" data-act="acc" data-c="' + r.code + '">Accept</button>' : '') + '</div>' : '';
-      return '<tr><td class="code">' + r.code + '</td><td>' + esc(r.it.n) + '</td><td style="min-width:220px">' + esc(r.it.d) + '</td>' +
+      return '<tr' + (r.flag ? ' style="background:rgba(243,203,102,.10)"' : '') + '><td class="code">' + r.code + '</td><td>' + esc(r.it.n) + '</td><td style="min-width:220px">' + esc(r.it.d) + '</td>' +
         '<td class="r">' + sageCell(r) + '</td><td class="r">' + fmt(r.first) + '</td><td class="r">' + (r.maxR > 1 ? fmt(r.fin) : '—') + '</td>' +
         '<td class="r ' + (r.diff < 0 ? 'negv' : r.diff > 0 ? 'pos' : '') + '">' + sfmt(r.diff) + (r.cons && r.first != null ? '<div class="muted" style="font-size:11px;white-space:nowrap">vs Sage + cons: ' + sfmt(r.fin - r.book) + '</div>' : '') + '</td><td class="r ' + (r.val < 0 ? 'negv' : r.val > 0 ? 'pos' : '') + '">' + (r.diff ? rand(r.val) : '—') + '</td>' +
         '<td><span class="tag ' + r.st + '">' + STLABEL[r.st] + '</span>' + flagTag(r) + '</td><td class="muted">' + esc(r.who) + '</td><td>' + acts + '</td></tr>';
@@ -961,8 +982,8 @@ td .acts { display: flex; gap: 6px; }
   function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function exportCsv() {
     var c = S.count, R = computeReview(); if (!c || !R) return;
-    var out = [['Code', 'Sage item', 'Description', 'Unit', 'Location', 'Sage qty', 'Consignment qty', 'Sage + consignment', 'Count', 'Recount', 'Final', 'Difference', 'Unit cost', 'Value', 'Status', 'Counted by', 'Sage action']];
-    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.cons || 0, r.book, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.cost.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who, r.flag === 'neg' ? 'Fix in Sage by hand: negative in Sage' : r.flag === 'cons' ? 'Fix in Sage by hand: consignment' : (r.st === 'accepted' && r.diff ? 'In Sage file' : '')]); });
+    var out = [['Code', 'Sage item', 'Description', 'Unit', 'Location', 'Sage qty', 'Consignment qty', 'Sage + consignment', 'Count', 'Recount', 'Final', 'Difference', 'Unit cost', 'Value', 'Status', 'Counted by', 'Sage action', 'Size check']];
+    R.rows.concat(R.unc).forEach(function (r) { out.push([r.code, r.it.n, r.it.d, r.it.u, c.loc, r.sage, r.cons || 0, r.book, r.first == null ? '' : r.first, r.maxR > 1 ? r.fin : '', r.st === 'none' ? '' : r.fin, r.diff, r.cost.toFixed(2), r.val.toFixed(2), STLABEL[r.st], r.who, r.flag === 'neg' ? 'Fix in Sage by hand: negative in Sage' : r.flag === 'cons' ? 'Fix in Sage by hand: consignment' : (r.st === 'accepted' && r.diff ? 'In Sage file' : ''), r.swap ? 'Possible size swap with ' + r.swap.map(function (o) { return o.it.n + ' (' + o.diff + ')'; }).join('; ') + (r.swapBal ? ' - balances' : '') : '']); });
     var blob = new Blob(['﻿' + out.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n')], { type: 'text/csv' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Stocktake ' + c.loc + ' ' + c.label.replace(/[^\w -]/g, '') + ' ' + String(c.openedAt).slice(0, 10) + '.csv';
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
