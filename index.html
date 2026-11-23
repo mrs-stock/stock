@@ -191,6 +191,7 @@ td .acts { display: flex; gap: 6px; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -205,7 +206,7 @@ td .acts { display: flex; gap: 6px; }
     view: 'loading', token: null, user: null, app: 'Stock Vs IP', snap: '', users: [], loc: 'CAR', q: '', item: null,
     counts: [], countsLoaded: false, countId: null, count: null, lines: [], mine: [], recount: [], recountRounds: {},
     pending: [], newLoc: 'CAR', newLabel: '', filter: 'diff', cur: null, curFromScan: false, findOpen: false, findQ: '',
-    sagePanel: false, pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true, typeOpen: false, qtyVal: ''
+    sagePanel: false, sageFile: null, sageText: '', sageRes: null, sageArm: false, sageDone: null, pinPick: null, pinVal: '', pinErr: '', labelSet: [], labelQ: '', pendingCode: null, busy: false, autoScan: true, typeOpen: false, qtyVal: ''
   };
   var LIST = [], BYCODE = {}, BYNO = {}, poll = null, wakeLock = null;
   var app = document.getElementById('app');
@@ -345,6 +346,92 @@ td .acts { display: flex; gap: 6px; }
   function requestWake() { try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; }).catch(function () { }); } catch (e) { } }
   function releaseWake() { try { if (wakeLock) wakeLock.release(); } catch (e) { } wakeLock = null; }
 
+  /* ===== Sage data upload (added 23 Nov 2026) ===== */
+  function viewSage() {
+    var f = S.sageFile, r = S.sageRes, done = S.sageDone, h = '';
+    h += '<div class="card"><b style="font-size:17px">Update Sage data</b>' +
+      '<p class="muted" style="margin:0">Refreshes quantities, units, station costs and consignment from Sage, the same as the Items refresh script. Use it just before a new count.</p>' +
+      '<div class="note plain">1. In Sage, export <b>I/C Location Details</b> (Excel or CSV), all locations.<br>2. Choose the file below and tap <b>Check file</b>. Nothing changes yet.<br>3. Read the summary, then tap <b>Apply</b>.</div>' +
+      '<div class="band gold">Now in the app: ' + snapLine() + '</div>' +
+      '<label class="btn block" for="sagefile" style="cursor:pointer">' + (f ? 'File: ' + esc(f.name) + ' (change)' : 'Choose the Sage file (Excel or CSV)') + '</label>' +
+      '<input id="sagefile" type="file" accept=".xls,.xlsx,.csv,text/csv" class="sr">' +
+      (f ? '<p class="muted" style="margin:0">Saved on the computer ' + when(new Date(f.time).toISOString()) + ' · ' + fmt(Math.round(f.size / 1024)) + ' KB</p>' : '') +
+      '<button class="btn gold block tall" data-act="sage-check"' + (!f || S.busy ? ' disabled' : '') + '>' + (S.busy && !S.sageArm ? 'Checking…' : 'Check file') + '</button></div>';
+    if (done) {
+      h += '<div class="note" style="background:var(--ok-bg);color:var(--ok)"><b>Done.</b> The app now shows Sage figures as at ' + esc(done.snap) + '. ' +
+        'Backup of the old figures: tab “' + esc(done.backup) + '” in the Sheet.</div>';
+    }
+    if (r) {
+      var s = r.summary, open = r.openCounts || [];
+      var locRows = LOCS.map(function (l) { var p = s.perLoc[l] || { lines: 0, qty: 0 }; return '<div class="tile"><span>' + LOCNAME[l] + '</span><b>' + fmt(p.lines) + '</b><small class="muted">items in stock</small></div>'; }).join('');
+      h += '<div class="card"><b style="font-size:17px">' + (done ? 'What changed' : 'What this file will change') + '</b>' +
+        '<div class="muted">' + esc(s.file) + ' · Sage figures as at <b>' + esc(s.snap) + '</b> (now: ' + esc(s.current || '—') + ')</div>' +
+        (s.ageDays >= 1 ? '<div class="note warn">This export is ' + s.ageDays + ' day' + (s.ageDays > 1 ? 's' : '') + ' old. For a count, export fresh from Sage first.</div>' : '') +
+        '<div class="g3" style="grid-template-columns:repeat(2,1fr)">' + locRows + '</div>' +
+        '<div class="g3"><div class="tile o"><span>App items matched</span><b>' + fmt(s.items - s.notInSageCount) + ' / ' + fmt(s.items) + '</b></div>' +
+        '<div class="tile o"><span>Quantity changes</span><b>' + fmt(s.qtyChanged) + '</b></div>' +
+        '<div class="tile o"><span>Unit changes</span><b>' + fmt(s.unitCount) + '</b></div></div>' +
+        '<div class="g3"><div class="tile o"><span>Negative in Sage</span><b>' + fmt(s.neg) + '</b></div>' +
+        '<div class="tile o"><span>Lines with consignment</span><b>' + fmt(s.cons) + '</b></div>' +
+        '<div class="tile o"><span>Lines in file</span><b>' + fmt(s.lines) + '</b></div></div>' +
+        (s.unitCount ? '<details><summary>Unit changes (' + s.unitCount + ')</summary><p class="muted">' + s.unit.map(function (u) { return esc(u[0] + ': ' + u[1] + ' → ' + u[2]); }).join('<br>') + '</p></details>' : '') +
+        (s.newInSageCount ? '<details><summary>Stocked in Sage but no app code yet (' + s.newInSageCount + '): need a code and a label</summary><p class="muted">' + s.newInSage.map(esc).join(', ') + (s.newInSageCount > s.newInSage.length ? ' …' : '') + '</p></details>' : '') +
+        (s.notInSageCount ? '<details><summary>In the app but not in this Sage file (' + s.notInSageCount + '): left as they are</summary><p class="muted">' + s.notInSage.map(esc).join(', ') + (s.notInSageCount > s.notInSage.length ? ' …' : '') + '</p></details>' : '');
+      if (open.length) {
+        h += '<div class="note err"><b>Cannot apply yet: ' + open.length + ' count' + (open.length > 1 ? 's are' : ' is') + ' still open.</b> The Sage figures may not change while a count is open. Close ' + (open.length > 1 ? 'them' : 'it') + ' under Stocktake first:<br>' +
+          open.map(function (c) { return esc(c.label) + ' · ' + (LOCNAME[c.loc] || c.loc) + ' · opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt); }).join('<br>') + '</div>' +
+          '<button class="btn block" data-act="sage-check"' + (S.busy ? ' disabled' : '') + '>Check again</button>';
+      } else if (!done) {
+        h += '<button class="btn red block tall" data-act="sage-apply"' + (S.busy ? ' disabled' : '') + '>' +
+          (S.busy ? 'Updating…' : S.sageArm ? 'Tap again to confirm: replace the Sage figures' : 'Apply to the app') + '</button>' +
+          '<p class="muted" style="margin:0">A backup of the current figures is kept in the Sheet, so this can be rolled back.</p>';
+      }
+      h += '</div>';
+    }
+    return '<div class="wrap">' + adminTop('sage') + h + '</div>';
+  }
+  function sagePick(file) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast('That file is too big to be the Sage export', true); return; }
+    var xl = /\.xlsx?$/i.test(file.name), rd = new FileReader();
+    rd.onload = function () {
+      var txt;
+      if (xl) {
+        if (!window.XLSX) { toast('Excel reader did not load. Check the internet connection, or use the CSV export.', true); return; }
+        try { txt = sageXlsToCsv_(window.XLSX, new Uint8Array(rd.result)); } catch (e) { toast('Could not read this Excel file: ' + e.message, true); return; }
+      } else txt = String(rd.result || '');
+      S.sageFile = { name: file.name, size: file.size, time: file.lastModified || Date.now() }; S.sageText = txt; S.sageRes = null; S.sageArm = false; S.sageDone = null; render();
+    };
+    rd.onerror = function () { toast('Could not read the file', true); };
+    if (xl) rd.readAsArrayBuffer(file); else rd.readAsText(file, 'utf-8');
+  }
+  /* Sage Excel export (.xls/.xlsx) -> CSV text in the same column order as the CSV export. Same code goes in the page. */
+  function sageXlsToCsv_(XLSX, buf) {
+    var wb = XLSX.read(buf, { type: 'array' });
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+    function d(v) {
+      if (typeof v !== 'number') return String(v);
+      if (v < 400) return ''; // Sage writes 'no receipt' as day 0/1 (1900)
+      var t = new Date(Math.round((v - 25569) * 86400000));
+      return t.getUTCFullYear() + '/' + ('0' + (t.getUTCMonth() + 1)).slice(-2) + '/' + ('0' + t.getUTCDate()).slice(-2);
+    }
+    function q(v) { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+    return rows.map(function (r, i) {
+      return r.map(function (v, j) { return q(i > 0 && j === 10 ? d(v) : v); }).join(',');
+    }).join('\n');
+  }
+  function sageCall(apply) {
+    S.busy = true; render();
+    return api('sageUpload', { csv: S.sageText, fileName: S.sageFile.name, fileTime: S.sageFile.time, apply: !!apply })
+      .then(function (j) {
+        if (apply) { S.sageDone = { snap: j.snap, backup: j.backup }; S.sageRes = { summary: j.summary, openCounts: [] }; S.snap = j.snap; toast('Sage figures updated'); return loadItems(); }
+        S.sageRes = { summary: j.summary, openCounts: j.openCounts || [] }; S.sageDone = null;
+      })
+      .catch(function (e) { toast(e.message, true); S.sageRes = S.sageRes; })
+      .then(function () { S.busy = false; S.sageArm = false; if (S.view === 'sage') render(); });
+  }
+
   /* ===== views ===== */
   function render() {
     var v = S.view, h;
@@ -354,6 +441,7 @@ td .acts { display: flex; gap: 6px; }
     else if (v === 'counts') h = viewCounts();
     else if (v === 'review') h = viewReview();
     else if (v === 'labels') h = viewLabels();
+    else if (v === 'sage') h = viewSage();
     else if (v === 'count') h = viewCount();
     else if (v === 'pick') h = viewPick();
     else if (v === 'wait') h = viewWait();
@@ -367,7 +455,7 @@ td .acts { display: flex; gap: 6px; }
   }
   function topBar(extra) { return '<div class="top">' + logo() + '<div class="who"><span>' + esc(S.user.name) + '</span>' + (extra || '<button class="btn sm ghost" data-act="signout">Sign out</button>') + '</div></div>'; }
   function adminTop(active) {
-    var tabs = [['stock', 'Stock'], ['counts', 'Stocktake'], ['labels', 'Labels']].map(function (t) { return '<button data-act="tab" data-v="' + t[0] + '"' + (active === t[0] ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('');
+    var tabs = [['stock', 'Stock'], ['counts', 'Stocktake'], ['labels', 'Labels'], ['sage', 'Sage data']].map(function (t) { return '<button data-act="tab" data-v="' + t[0] + '"' + (active === t[0] ? ' aria-current="page"' : '') + '>' + t[1] + '</button>'; }).join('');
     return topBar() + '<nav class="tabs" aria-label="Sections">' + tabs + '</nav>';
   }
   function snapLine() { return S.snap ? 'Sage snapshot ' + dmy(S.snap) + ' ' + String(S.snap).slice(11, 16) : 'Sage snapshot'; }
@@ -794,6 +882,8 @@ td .acts { display: flex; gap: 6px; }
     else if (a === 'close-count') { api('closeCount', { countId: S.countId }).then(function () { toast('Count closed'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'reopen') { api('reopenCount', { countId: S.countId }).then(refreshCount).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'export') exportCsv();
+    else if (a === 'sage-check') { if (S.sageText) sageCall(false); }
+    else if (a === 'sage-apply') { if (!S.sageArm) { S.sageArm = true; render(); } else sageCall(true); }
     else if (a === 'sage-check') { S.sagePanel = true; render(); setTimeout(function () { window.scrollTo(0, document.body.scrollHeight); }, 30); }
     else if (a === 'sage-close') { S.sagePanel = false; render(); }
     else if (a === 'sage-download') sageDownload();
@@ -828,7 +918,7 @@ td .acts { display: flex; gap: 6px; }
       if (msg) { if (/^[A-Z0-9]{4}$/.test(v)) { msg.textContent = 'Code ' + v + ' not found. Check the label, or find the item by name.'; msg.style.color = 'var(--red-soft)'; } else { msg.textContent = 'Looks up on the 4th character. A Bluetooth scanner can type into this box too.'; msg.style.color = ''; } }
     }
   });
-  app.addEventListener('change', function (ev) { if (ev.target.id === 'autoscan') { S.autoScan = ev.target.checked; lsSet('stk-autoscan', S.autoScan); } });
+  app.addEventListener('change', function (ev) { if (ev.target.id === 'sagefile') { sagePick(ev.target.files && ev.target.files[0]); return; } if (ev.target.id === 'autoscan') { S.autoScan = ev.target.checked; lsSet('stk-autoscan', S.autoScan); } });
   app.addEventListener('keydown', function (ev) {
     if (ev.target.id === 'entry' && ev.key === 'Enter') {
       ev.preventDefault(); var code = parseCode(ev.target.value);
@@ -1001,7 +1091,7 @@ td .acts { display: flex; gap: 6px; }
     if (v === 'pin') { act('pin-cancel', {}); return true; }
     if (v === 'count' && S.findOpen) { S.findOpen = false; S.findQ = ''; render(); return true; }
     if (v === 'count' && S.cur) { act('wrong', {}); return true; }
-    if ((v === 'counts' || v === 'labels') && isMgr()) { act('tab', { v: 'stock' }); return true; }
+    if ((v === 'counts' || v === 'labels' || v === 'sage') && isMgr()) { act('tab', { v: 'stock' }); return true; }
     return false;
   }
   function guardBack() { try { history.pushState({ stk: 'guard' }, ''); } catch (e) { } }
