@@ -364,7 +364,7 @@ td .acts { display: flex; gap: 6px; }
       '<label class="btn block" for="sagefile" style="cursor:pointer">' + (f ? 'File: ' + esc(f.name) + ' (change)' : 'Choose the Sage file (Excel or CSV)') + '</label>' +
       '<input id="sagefile" type="file" accept=".xls,.xlsx,.csv,text/csv" class="sr">' +
       (f ? '<p class="muted" style="margin:0">Saved on the computer ' + when(new Date(f.time).toISOString()) + ' · ' + fmt(Math.round(f.size / 1024)) + ' KB</p>' : '') +
-      '<button class="btn gold block tall" data-act="sage-check"' + (!f || S.busy ? ' disabled' : '') + '>' + (S.busy && !S.sageArm ? 'Checking…' : 'Check file') + '</button></div>';
+      '<button class="btn gold block tall" data-act="sdata-check"' + (!f || S.busy ? ' disabled' : '') + '>' + (S.busy && !S.sageArm ? 'Checking…' : 'Check file') + '</button></div>';
     if (done) {
       h += '<div class="note" style="background:var(--ok-bg);color:var(--ok)"><b>Done.</b> The app now shows Sage figures as at ' + esc(done.snap) + '. ' +
         'Backup of the old figures: tab “' + esc(done.backup) + '” in the Sheet.</div>';
@@ -388,9 +388,9 @@ td .acts { display: flex; gap: 6px; }
       if (open.length) {
         h += '<div class="note err"><b>Cannot apply yet: ' + open.length + ' count' + (open.length > 1 ? 's are' : ' is') + ' still open.</b> The Sage figures may not change while a count is open. Close ' + (open.length > 1 ? 'them' : 'it') + ' under Stocktake first:<br>' +
           open.map(function (c) { return esc(c.label) + ' · ' + (LOCNAME[c.loc] || c.loc) + ' · opened by ' + esc(c.openedBy) + ' ' + when(c.openedAt); }).join('<br>') + '</div>' +
-          '<button class="btn block" data-act="sage-check"' + (S.busy ? ' disabled' : '') + '>Check again</button>';
+          '<button class="btn block" data-act="sdata-check"' + (S.busy ? ' disabled' : '') + '>Check again</button>';
       } else if (!done) {
-        h += '<button class="btn red block tall" data-act="sage-apply"' + (S.busy ? ' disabled' : '') + '>' +
+        h += '<button class="btn red block tall" data-act="sdata-apply"' + (S.busy ? ' disabled' : '') + '>' +
           (S.busy ? 'Updating…' : S.sageArm ? 'Tap again to confirm: replace the Sage figures' : 'Apply to the app') + '</button>' +
           '<p class="muted" style="margin:0">A backup of the current figures is kept in the Sheet, so this can be rolled back.</p>';
       }
@@ -890,8 +890,8 @@ td .acts { display: flex; gap: 6px; }
     else if (a === 'close-count') { api('closeCount', { countId: S.countId }).then(function () { toast('Count closed'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'reopen') { api('reopenCount', { countId: S.countId }).then(refreshCount).catch(function (e) { toast(e.message, true); }); }
     else if (a === 'export') exportCsv();
-    else if (a === 'sage-check') { if (S.sageText) sageCall(false); }
-    else if (a === 'sage-apply') { if (!S.sageArm) { S.sageArm = true; render(); } else sageCall(true); }
+    else if (a === 'sdata-check') { if (S.sageText) sageCall(false); }
+    else if (a === 'sdata-apply') { if (!S.sageArm) { S.sageArm = true; render(); } else sageCall(true); }
     else if (a === 'sage-check') { S.sagePanel = true; render(); setTimeout(function () { window.scrollTo(0, document.body.scrollHeight); }, 30); }
     else if (a === 'sage-close') { S.sagePanel = false; render(); }
     else if (a === 'sage-download') sageDownload();
