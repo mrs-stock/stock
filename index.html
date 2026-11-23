@@ -295,6 +295,13 @@ td .acts { display: flex; gap: 6px; }
       else if (S.view === 'counts') render();
     }).catch(function (e) { toast(e.message, true); });
   }
+  /* Review table: keep the sideways/vertical scroll position when the screen redraws (23 Nov 2026) */
+  function keepScroll(fn) {
+    var tb = document.querySelector('.tablebox'), x = tb ? tb.scrollLeft : 0, y = tb ? tb.scrollTop : 0, wy = window.scrollY;
+    fn();
+    var nb = document.querySelector('.tablebox'); if (nb) { nb.scrollLeft = x; nb.scrollTop = y; }
+    window.scrollTo(0, wy);
+  }
   function refreshCount() {
     if (!S.countId) return;
     return api('countState', { countId: S.countId }).then(function (j) {
@@ -307,7 +314,8 @@ td .acts { display: flex; gap: 6px; }
         S.recount = Object.keys(S.recountRounds).filter(function (c) { return S.recountRounds[c] > (maxR[c] || 0); });
       } else { S.mine = j.mine; S.recount = j.recount; S.recountRounds = j.recountRounds || {}; }
       S.pending = S.pending.filter(function (p) { return p.status !== 'saved'; });
-      if (S.view === 'count') renderCountLive(); else if (S.view === 'review') render();
+      if (S.view === 'count') renderCountLive();
+      else if (S.view === 'review') { var sig = JSON.stringify([j.count, j.lines]); if (sig !== S.revSig) { S.revSig = sig; keepScroll(render); } } // redraw only on real changes, keep the swipe position
     }).catch(function (e) { if (S.view === 'count' || S.view === 'review') toast(e.message, true); });
   }
 
@@ -874,7 +882,7 @@ td .acts { display: flex; gap: 6px; }
     }
     else if (a === 'refresh-counts') refreshCounts();
     else if (a === 'count') { stopPoll(); enterCount(d.id); }
-    else if (a === 'review') { S.countId = d.id; S.count = null; S.lines = []; S.filter = 'diff'; S.sagePanel = false; go('review'); startPoll(refreshCount, 10000); }
+    else if (a === 'review') { S.revSig = ''; S.countId = d.id; S.count = null; S.lines = []; S.filter = 'diff'; S.sagePanel = false; go('review'); startPoll(refreshCount, 10000); }
     else if (a === 'refresh-review') refreshCount();
     else if (a === 'filter') { S.filter = d.f; render(); }
     else if (a === 'rc') { api('setRecount', { countId: S.countId, code: d.c }).then(function () { toast('Recount sent to the counters'); refreshCount(); }).catch(function (e) { toast(e.message, true); }); }
